@@ -1,4 +1,4 @@
-import DSL as sd
+import diavio_DSL as sd
 
 class AccidentReport(object):
     def __init__(self):

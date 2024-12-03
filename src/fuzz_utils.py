@@ -10,7 +10,7 @@ import numpy as np
 import config
 from driving_quality import *
 
-import DSL as sd
+import diavio_DSL as sd
 
 config.set_carla_api_path()
 try:

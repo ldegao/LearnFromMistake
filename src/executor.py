@@ -19,7 +19,7 @@ import config
 import constants as c
 from fuzz_utils import quaternion_from_euler, get_carla_transform
 
-import DSL as sd
+import diavio_DSL as sd
 
 config.set_carla_api_path()
 try:

@@ -1,5 +1,5 @@
-from DSL.RuleChecker import AgainstRules
-import DSL as sd
+from diavio_DSL .RuleChecker import AgainstRules
+import diavio_DSL as sd
 import config
 from collections import defaultdict
 

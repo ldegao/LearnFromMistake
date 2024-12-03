@@ -1,5 +1,5 @@
 from typing import Any
-import DSL as sd
+import diavio_DSL as sd
 import numpy as np
 
 import config

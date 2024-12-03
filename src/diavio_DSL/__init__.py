@@ -1,13 +1,13 @@
-from DSL.utils import *
-from DSL.AccidentReport import AccidentReport
-from DSL.RoadParser import RoadNetWork
-from DSL.EnvironmentParser import Environment
-from DSL.VehicleAnalyzer import VehicleReport
-from DSL.ObjectiveBehavior import ObjectiveBehavior
-from DSL.MyJsonEncoder import MyJsonEncoder
-from DSL.VehicleDict import VehicleDict
-from DSL.ViolationDetector import Violation
-from DSL.ObstacleParser import Obstacles
+from diavio_DSL .utils import *
+from diavio_DSL .AccidentReport import AccidentReport
+from diavio_DSL .RoadParser import RoadNetWork
+from diavio_DSL .EnvironmentParser import Environment
+from diavio_DSL .VehicleAnalyzer import VehicleReport
+from diavio_DSL .ObjectiveBehavior import ObjectiveBehavior
+from diavio_DSL .MyJsonEncoder import MyJsonEncoder
+from diavio_DSL .VehicleDict import VehicleDict
+from diavio_DSL .ViolationDetector import Violation
+from diavio_DSL .ObstacleParser import Obstacles
 
 from states import State
 

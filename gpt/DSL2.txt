@@ -1,0 +1,33 @@
+<Scene>                   ::= <Road>; <Environment>; <NPCs>; <ADS>;
+
+<Road>                    ::= <RoadType>; <Lanes>; <RoadSlope>; <SpeedLimit>;
+<RoadType>                ::= intersection | divided | undivided | two-way
+<Lanes>                   ::= ∅ | <Lane>; <Lanes>;
+<Lane>                    ::= [laneIdentifier]
+<RoadSlope>               ::= flat | uphill | downhill | level
+<SpeedLimit>              ::= [numerical]
+<Environment>             ::= <Weather>; <RoadCondition>; <TrafficSignals>;
+<Weather>                 ::= sunny | rainy | foggy | clear | cloudy | snowy
+<RoadCondition>           ::= dry | wet | icy | good | normal | snow-covered
+<TrafficSignals>          ::=  None | red | yellow | green | stop
+
+<NPCs>                    ::= ∅ | <NPC>; <NPCs>;
+<NPC>                     ::= <Type>; <SideToADS>; <HeadDirection>; <SpeedDirection>; <Speed>; <MovingOnWhichWay>; <MovingToWhichWay>; <SteeringAngle>;<PriorAction>;<Accelerate>;<LaneDeparture>;<TTCToADS>;
+<Type>                    ::= non-motorized vehicle | motorized vehicle | roadblock | debris | animals
+<SideToADS>               ::= front | rear | left | right | front-left/right | rear-left/right
+<HeadDirection>                ::= north | south | east | west | northeast | northwest |  southeast |southwest
+<SpeedDirection>  ::= north | south | east | west| northeast | northwest | southeast   |southwest
+<Speed>             ::= [numerical]
+<MovingOnWhichWay>        ::= <Lane>
+<MovingToWhichWay>        ::= <Lane>
+<SteeringAngle>           ::= left| right| straight
+<Accelerate>              ::= constant-speed| Accelerating | Braking
+<PriorAction>      ::= Maneuver| Stable
+<LaneDeparture> ::= Align|Deviate|Depart
+<ADS>                     ::= <HeadDirection>; <SpeedDirection>; <Speed>; <MovingOnWhichWay>; <MovingToWhichWay>; <SteeringAngle>; <PriorAction>;<Accelerate>;<LaneDeparture>;<TTCToNPCs>;<TTCToRestrictedZone>
+<TTCToADS>               ::=  very short| short| moderate | long| Very long
+<TTCToNPCs>               ::=  very short| short| moderate | long| Very long
+<TTCToRestrictedZone> ::=  very short| short| moderate | long| Very long
+<CrashType> ::= Lead Vehicle Stopped | Control Loss Without Prior Vehicle Action | Vehicle(s) Turning at Non-Signalized Junctions | Lead Vehicle Decelerating | Road Edge Departure Without Prior Vehicle Maneuver | Vehicle(s) Changing Lanes ? Same Direction | Animal Crash Without Prior Vehicle Maneuver | Straight Crossing Paths at Non-Signalized Junctions | Running Red Light | Vehicle(s) Turning ? Same Direction | LTAP/OD at Signalized Junctions | Lead Vehicle Moving at Lower Constant Speed | LTAP/OD at Non-Signalized Junctions | Backing Up Into Another Vehicle | Vehicle(s) Not Making a Maneuver ? Opposite Direction | Control Loss With Prior Vehicle Action | Vehicle(s) Drifting ? Same Direction | Following Vehicle Making a Maneuver | Road Edge Departure With Prior Vehicle Maneuver | Road Edge Departure While Backing Up | Object Crash Without Prior Vehicle Maneuver | Evasive Action Without Prior Vehicle Maneuver | Vehicle(s) Parking ? Same Direction | Running Stop Sign | Non-Collision Incident | Vehicle Failure | Pedestrian Crash Without Prior Vehicle Maneuver | Vehicle Turning Right at Signalized Junctions | Object Crash With Prior Vehicle Maneuver | Pedalcyclist Crash Without Prior Vehicle Maneuver | Animal Crash With Prior Vehicle Maneuver | Pedalcyclist Crash With Prior Vehicle Maneuver | Pedestrian Crash With Prior Vehicle Maneuver | Lead Vehicle Accelerating | Vehicle(s) Making a Maneuver ? Opposite Direction | Evasive Action With Prior Vehicle Maneuver | Other | Safe
+
+<Description> ::= [description]

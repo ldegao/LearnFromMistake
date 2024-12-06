@@ -1,93 +1,307 @@
+########################################################################################################
+#
+# Use function TTC(samples, 'dataframe') or TTC(samples, 'values') to compute two-dimensional Time-To-Collision.
+#
+# The first input is a pandas dataframe of vehicle pair samples, which should include the following columns.
+# -----------------------------------------------------------------------------------
+# x_i      :  x coordinate of the ego vehicle (usually assumed to be centroid)      |
+# y_i      :  y coordinate of the ego vehicle (usually assumed to be centroid)      |
+# vx_i     :  x coordinate of the velocity of the ego vehicle                       |
+# vy_i     :  y coordinate of the velocity of the ego vehicle                       |
+# hx_i     :  x coordinate of the heading direction of the ego vehicle              |
+# hy_i     :  y coordinate of the heading direction of the ego vehicle              |
+# length_i :  length of the ego vehicle                                             |
+# width_i  :  width of the ego vehicle                                              |
+# x_j      :  x coordinate of another vehicle (usually assumed to be centroid)      |
+# y_j      :  y coordinate of another vehicle (usually assumed to be centroid)      |
+# vx_j     :  x coordinate of the velocity of another vehicle                       |
+# vy_j     :  y coordinate of the velocity of another vehicle                       |
+# hx_j     :  x coordinate of the heading direction of another vehicle              |
+# hy_j     :  y coordinate of the heading direction of another vehicle              |
+# length_j :  length of another vehicle                                             |
+# width_j  :  width of another vehicle                                              |
+# ------------------------------------------------------------------------------------
+# The second input allows outputing a dataframe with inputed samples plus a new column named 'TTC', or mere TTC values.
+#
+# If TTC==np.inf, the ego vehicle and another vehicle will never collide if they keep current speed.
+# A negative TTC means the bounding boxes of the ego vehicle and another vehicle are overlapping.
+# This is due to approximating the space occupied by a vehicle with a rectangular.
+# In other words, TTC<0 in this computation means the collision between the two vehicles almost (or although seldom, already) occurred.
+#
+# *** Note that mere TTC computation can give an extreme small positive value even when the vehivles are overlapping a bit.
+#     In order to improve the accuracy, please use function CurrentD(samples, 'dataframe') or CurrentD(samples, 'values') to further
+#     exclude overlapping vehicles.
+#
+########################## Copyright (c) 2022 Yiru Jiao <y.jiao-1@tudelft.nl> ###########################
+
+# Import
 import numpy as np
+import warnings
 
 
-def compute_ttc(p_A, v_A, steer_A, p_B, v_B, steer_B, d, epsilon=1e-6, max_time=50, time_steps=5000):
+# Functions
+def line(point0, point1):
+    x0, y0 = point0
+    x1, y1 = point1
+    a = y0 - y1
+    b = x1 - x0
+    c = x0 * y1 - x1 * y0
+    return a, b, c
+
+
+def intersect(line0, line1):
+    a0, b0, c0 = line0
+    a1, b1, c1 = line1
+    D = a0 * b1 - a1 * b0  # D==0 then two lines overlap
+    D[D == 0] = np.nan
+    x = (b0 * c1 - b1 * c0) / D
+    y = (a1 * c0 - a0 * c1) / D
+    #    x[np.isnan(x)] = np.inf
+    #   y[np.isnan(y)] = np.inf
+    return np.array([x, y])
+
+
+def ison(line_start, line_end, point):
+    crossproduct = (point[1] - line_start[1]) * (line_end[0] - line_start[0]) - (point[0] - line_start[0]) * (
+            line_end[1] - line_start[1])
+    dotproduct = (point[0] - line_start[0]) * (line_end[0] - line_start[0]) + (point[1] - line_start[1]) * (
+            line_end[1] - line_start[1])
+    squaredlength = (line_end[0] - line_start[0]) ** 2 + (line_end[1] - line_start[1]) ** 2
+    return (np.absolute(crossproduct) <= 1e-5) & (dotproduct >= 0) & (dotproduct <= squaredlength)
+
+
+def dist_p2l(point, line_start, line_end):
+    return np.absolute((line_end[0] - line_start[0]) * (line_start[1] - point[1]) - (line_start[0] - point[0]) * (
+            line_end[1] - line_start[1])) / np.sqrt(
+        (line_end[0] - line_start[0]) ** 2 + (line_end[1] - line_start[1]) ** 2)
+
+
+def getpoints(samples):
+    ## vehicle i
+    heading_i = samples[['hx_i', 'hy_i']].values
+    perp_heading_i = np.array([-heading_i[:, 1], heading_i[:, 0]]).T
+    heading_scale_i = np.tile(np.sqrt(heading_i[:, 0] ** 2 + heading_i[:, 1] ** 2), (2, 1)).T
+    length_i = np.tile(samples.length_i.values, (2, 1)).T
+    width_i = np.tile(samples.width_i.values, (2, 1)).T
+
+    point_up = samples[['x_i', 'y_i']].values + heading_i / heading_scale_i * length_i / 2
+    point_down = samples[['x_i', 'y_i']].values - heading_i / heading_scale_i * length_i / 2
+    point_i1 = (point_up + perp_heading_i / heading_scale_i * width_i / 2).T
+    point_i2 = (point_up - perp_heading_i / heading_scale_i * width_i / 2).T
+    point_i3 = (point_down + perp_heading_i / heading_scale_i * width_i / 2).T
+    point_i4 = (point_down - perp_heading_i / heading_scale_i * width_i / 2).T
+
+    ## vehicle j
+    heading_j = samples[['hx_j', 'hy_j']].values
+    perp_heading_j = np.array([-heading_j[:, 1], heading_j[:, 0]]).T
+    heading_scale_j = np.tile(np.sqrt(heading_j[:, 0] ** 2 + heading_j[:, 1] ** 2), (2, 1)).T
+    length_j = np.tile(samples.length_j.values, (2, 1)).T
+    width_j = np.tile(samples.width_j.values, (2, 1)).T
+
+    point_up = samples[['x_j', 'y_j']].values + heading_j / heading_scale_j * length_j / 2
+    point_down = samples[['x_j', 'y_j']].values - heading_j / heading_scale_j * length_j / 2
+    point_j1 = (point_up + perp_heading_j / heading_scale_j * width_j / 2).T
+    point_j2 = (point_up - perp_heading_j / heading_scale_j * width_j / 2).T
+    point_j3 = (point_down + perp_heading_j / heading_scale_j * width_j / 2).T
+    point_j4 = (point_down - perp_heading_j / heading_scale_j * width_j / 2).T
+
+    return (point_i1, point_i2, point_i3, point_i4, point_j1, point_j2, point_j3, point_j4)
+
+
+def CurrentD(samples, toreturn='dataframe'):
+    if toreturn != 'dataframe' and toreturn != 'values':
+        warnings.warn('Incorrect target to return. Please specify \'dataframe\' or \'values\'.')
+    else:
+        point_i1, point_i2, point_i3, point_i4, point_j1, point_j2, point_j3, point_j4 = getpoints(samples)
+
+        dist_mat = []
+        count_i = 0
+        for point_i_start, point_i_end in zip([point_i1, point_i4, point_i3, point_i2],
+                                              [point_i2, point_i3, point_i1, point_i4]):
+            count_j = 0
+            for point_j_start, point_j_end in zip([point_j1, point_j4, point_j3, point_j2],
+                                                  [point_j2, point_j3, point_j1, point_j4]):
+                if count_i < 2 and count_j < 2:
+                    # Distance from point to point
+                    dist_mat.append(np.sqrt(
+                        (point_i_start[0] - point_j_start[0]) ** 2 + (point_i_start[1] - point_j_start[1]) ** 2))
+                    dist_mat.append(
+                        np.sqrt((point_i_start[0] - point_j_end[0]) ** 2 + (point_i_start[1] - point_j_end[1]) ** 2))
+                    dist_mat.append(
+                        np.sqrt((point_i_end[0] - point_j_start[0]) ** 2 + (point_i_end[1] - point_j_start[1]) ** 2))
+                    dist_mat.append(
+                        np.sqrt((point_i_end[0] - point_j_end[0]) ** 2 + (point_i_end[1] - point_j_end[1]) ** 2))
+
+                # Distance from point to edge
+                ist = intersect(line(point_i_start, point_i_start + np.array(
+                    [-(point_j_start - point_j_end)[1], (point_j_start - point_j_end)[0]])),
+                                line(point_j_start, point_j_end))
+                ist[:, ~ison(point_j_start, point_j_end, ist)] = np.nan
+                dist_mat.append(np.sqrt((ist[0] - point_i_start[0]) ** 2 + (ist[1] - point_i_start[1]) ** 2))
+
+                # Overlapped bounding boxes
+                ist = intersect(line(point_i_start, point_i_end), line(point_j_start, point_j_end))
+                dist = np.ones(len(samples)) * np.nan
+                dist[ison(point_i_start, point_i_end, ist) & ison(point_j_start, point_j_end, ist)] = 0
+                dist[np.isnan(ist[0]) & (
+                        ison(point_i_start, point_i_end, point_j_start) | ison(point_i_start, point_i_end,
+                                                                               point_j_end))] = 0
+                dist_mat.append(dist)
+                count_j += 1
+            count_i += 1
+
+        cdist = np.nanmin(np.array(dist_mat), axis=0)
+
+        if toreturn == 'dataframe':
+            samples['CurrentD'] = cdist
+            return samples
+        elif toreturn == 'values':
+            return cdist
+
+
+def TTC_ij(samples):
+    point_i1, point_i2, point_i3, point_i4, point_j1, point_j2, point_j3, point_j4 = getpoints(samples)
+    direct_v = (samples[['vx_i', 'vy_i']].values - samples[['vx_j', 'vy_j']].values).T
+
+    dist_mat = []
+    leaving_mat = []
+    for point_line_start in [point_i1, point_i2, point_i3, point_i4]:
+        for edge_start, edge_end in zip([point_j1, point_j3, point_j1, point_j2],
+                                        [point_j2, point_j4, point_j3, point_j4]):
+            point_line_end = point_line_start + direct_v
+            ### intersection point
+            ist = intersect(line(point_line_start, point_line_end), line(edge_start, edge_end))
+            ist[:, ~ison(edge_start, edge_end, ist)] = np.nan
+            ### distance from point to intersection point
+            dist_ist = np.sqrt((ist[0] - point_line_start[0]) ** 2 + (ist[1] - point_line_start[1]) ** 2)
+            dist_ist[np.isnan(dist_ist)] = np.inf
+            dist_mat.append(dist_ist)
+            leaving = direct_v[0] * (ist[0] - point_line_start[0]) + direct_v[1] * (ist[1] - point_line_start[1])
+            leaving[leaving >= 0] = 10
+            leaving[leaving < 0] = 1
+            leaving_mat.append(leaving)
+
+    dist2overlap = np.array(dist_mat).min(axis=0)
+    TTC = dist2overlap / np.sqrt((samples.vx_i - samples.vx_j) ** 2 + (samples.vy_i - samples.vy_j) ** 2)
+    leaving = np.nansum(np.array(leaving_mat), axis=0)
+    TTC[leaving < 10] = np.inf
+    TTC[(leaving > 10) & (leaving % 10 != 0)] = -1
+
+    return TTC
+
+
+# Computation
+
+def TTC(samples, toreturn='dataframe'):
+    if toreturn != 'dataframe' and toreturn != 'values':
+        warnings.warn('Incorrect target to return. Please specify \'dataframe\' or \'values\'.')
+    else:
+        ttc_ij = TTC_ij(samples)
+        keys = [var + '_i' for var in ['x', 'y', 'vx', 'vy', 'hx', 'hy', 'length', 'width']]
+        values = [var + '_j' for var in ['x', 'y', 'vx', 'vy', 'hx', 'hy', 'length', 'width']]
+        keys.extend(values)
+        values.extend(keys)
+        rename_dict = {keys[i]: values[i] for i in range(len(keys))}
+        ttc_ji = TTC_ij(samples.rename(columns=rename_dict))
+
+        if toreturn == 'dataframe':
+            samples['TTC'] = np.minimum(ttc_ij, ttc_ji)
+            return samples
+        elif toreturn == 'values':
+            return np.minimum(ttc_ij, ttc_ji)
+
+
+# Efficiency evaluation
+def efficiency(samples, iterations):
+    import time
+    ts = []
+    for _ in range(iterations):
+        t = time.time()
+        _ = TTC(samples, 'values')
+        ts.append(time.time() - t)
+    return sum(ts) / iterations
+
+
+def region_to_vehicle(region_coords):
     """
-    Compute TTC (Time to Collision) for linear and circular trajectories using incremental search.
+    Convert a rectangular region into a virtual vehicle representation.
 
     Parameters:
-    - p_A, v_A, steer_A: Position, velocity, and steering angle of object A
-    - p_B, v_B, steer_B: Position, velocity, and steering angle of object B
-    - d: Collision threshold distance
-    - epsilon: Tolerance for identifying straight-line motion
-    - max_time: Maximum time range for TTC computation
-    - time_steps: Number of steps for incremental time search
+        region_coords: list, the four vertices of the rectangular region (Vector3D objects or tuples).
 
     Returns:
-    - TTC: Time to collision, or None if no collision occurs
+        dict: A dictionary representing the region as a virtual vehicle.
     """
-    times = np.linspace(0, max_time, time_steps)
-    R_A, R_B = None, None
-    c_A, c_B = None, None
+    # Convert region_coords to a list of tuples if necessary
+    coords = [(coord.x, coord.y) if hasattr(coord, 'x') else coord for coord in region_coords]
 
-    # Compute circular motion parameters
-    if abs(steer_A) > epsilon:
-        R_A = np.linalg.norm(v_A) / np.tan(steer_A)
-        c_A = p_A + np.array([-R_A * v_A[1], R_A * v_A[0]]) / np.linalg.norm(v_A)
+    # Calculate the center of the region (average of the vertices)
+    center_x = np.mean([coord[0] for coord in coords])
+    center_y = np.mean([coord[1] for coord in coords])
 
-    if abs(steer_B) > epsilon:
-        R_B = np.linalg.norm(v_B) / np.tan(steer_B)
-        c_B = p_B + np.array([-R_B * v_B[1], R_B * v_B[0]]) / np.linalg.norm(v_B)
+    # Calculate the length and width of the region
+    length = np.linalg.norm(np.array(coords[0]) - np.array(coords[1]))
+    width = np.linalg.norm(np.array(coords[1]) - np.array(coords[2]))
 
-    # Incrementally compute positions
-    for t in times:
-        if R_A is not None:  # A is circular
-            theta_A = t * np.linalg.norm(v_A) / R_A
-            pos_A = c_A + R_A * np.array([np.cos(theta_A), np.sin(theta_A)])
-        else:  # A is linear
-            pos_A = p_A + v_A * t
+    # Define a fixed direction vector (e.g., aligned with x-axis)
+    heading_x = 1
+    heading_y = 0
 
-        if R_B is not None:  # B is circular
-            theta_B = t * np.linalg.norm(v_B) / R_B
-            pos_B = c_B + R_B * np.array([np.cos(theta_B), np.sin(theta_B)])
-        else:  # B is linear
-            pos_B = p_B + v_B * t
-
-        # Check distance
-        if np.linalg.norm(pos_A - pos_B) <= d:
-            return t  # Return the first time collision occurs
-
-    return None  # No collision detected within the time range
+    # Return the region as a virtual vehicle
+    return {
+        'x_j': center_x,
+        'y_j': center_y,
+        'vx_j': 0.0,
+        'vy_j': 0.0,
+        'hx_j': heading_x,
+        'hy_j': heading_y,
+        'length_j': length,
+        'width_j': width
+    }
 
 
-def compute_ttc_vehicle_to_rectangle(p_car, v_car, a_car, r_car, rect_vertices, max_time=50, time_steps=5000):
+def TTC_with_zone(samples, zone, toreturn='dataframe'):
     """
-    Compute the Time to Collision (TTC) between a circular vehicle and a rectangular obstacle.
+    Compute Time-to-Collision (TTC) between vehicles and a specific lane center.
 
     Parameters:
-    - p_car: Initial position of the vehicle (numpy array)
-    - v_car: Velocity of the vehicle (numpy array)
-    - a_car: Acceleration of the vehicle (numpy array)
-    - r_car: Radius of the vehicle
-    - rect_vertices: List of vertices defining the rectangle (list of numpy arrays)
-    - max_time: Maximum time to consider for collision
-    - time_steps: Number of steps for incremental time search
+        samples (pandas.DataFrame): Contains vehicle information (x_i, y_i, vx_i, vy_i, hx_i, hy_i, length_i, width_i).
+        zone (carla.Waypoint): The Waypoint representing the lane center.
+        toreturn (str): 'dataframe' to return the full dataframe with TTC values or 'values' to return only TTC values.
 
     Returns:
-    - t_collision: Time to collision, or None if no collision occurs
+        pandas.DataFrame or numpy.ndarray:
+            - If toreturn='dataframe', returns the dataframe with an additional 'TTC_zone' column.
+            - If toreturn='values', returns an array of TTC values.
     """
+    waypoint = zone
 
-    # Define the vehicle trajectory
-    def vehicle_position(t):
-        return p_car + v_car * t + 0.5 * a_car * t ** 2
+    # Convert the waypoint to a virtual vehicle representation
+    zone_vehicle = {
+        'x_j': waypoint.transform.location.x,
+        'y_j': waypoint.transform.location.y,
+        'vx_j': 0.0,  # Zone is stationary
+        'vy_j': 0.0,  # Zone is stationary
+        # a Compute heading direction from the waypoint's rotation (yaw)
+        'hx_j': np.cos(np.deg2rad(waypoint.transform.rotation.yaw)),
+        'hy_j': np.sin(np.deg2rad(waypoint.transform.rotation.yaw)),
+        # Use the lane width as an approximate length
+        'length_j': 5,
+        # Assume half the lane width for vehicle width
+        'width_j': waypoint.lane_width / 2
+    }
 
-    # Compute the distance to a rectangle edge
-    def distance_to_edge(t, p1, p2):
-        car_pos = vehicle_position(t)
-        edge_vec = p2 - p1
-        s = np.clip(np.dot(car_pos - p1, edge_vec) / np.dot(edge_vec, edge_vec), 0, 1)
-        closest_point = p1 + s * edge_vec
-        return np.linalg.norm(car_pos - closest_point) - r_car
+    # Add zone_vehicle information to the samples dataframe
+    for key, value in zone_vehicle.items():
+        samples[key] = value
 
-    # Compute the minimum distance to the rectangle
-    def min_distance_to_rectangle(t):
-        distances = [distance_to_edge(t, rect_vertices[i], rect_vertices[(i + 1) % len(rect_vertices)])
-                     for i in range(len(rect_vertices))]
-        return min(distances)
+    # Compute TTC using the existing TTC function
+    result = TTC(samples, toreturn)
 
-    # Check for collision over time
-    times = np.linspace(0, max_time, time_steps)
-    for t in times:
-        if min_distance_to_rectangle(t) <= 0:
-            return t  # Collision time
-    return None  # No collision within the time range
+    if toreturn == 'dataframe':
+        # Rename the TTC column for clarity
+        samples.rename(columns={'TTC': 'TTC_zone'}, inplace=True)
+        return samples
+    elif toreturn == 'values':
+        return result
+

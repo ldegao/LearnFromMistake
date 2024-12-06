@@ -18,6 +18,7 @@ class State:
         self.sim_start_time = 0
         self.num_frames = 0
         self.elapsed_time = 0
+        self.DSLScene = None
 
         # failure states
         self.spawn_failed = False

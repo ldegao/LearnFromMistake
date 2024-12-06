@@ -1,6 +1,6 @@
 import numpy as np
 import diavio_DSL as sd
-from diavio_DSL .RuleChecker import AgainstRules
+from diavio_DSL.RuleChecker import AgainstRules
 
 import config
 config.set_carla_api_path()

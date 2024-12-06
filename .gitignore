@@ -3,3 +3,6 @@ out-artifact/*
 out-artifact-*/*
 out-artifact/meta
 gpt/api.txt
+.idea
+/src/seed
+/src/seed-artifact

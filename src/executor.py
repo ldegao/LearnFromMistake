@@ -3,6 +3,7 @@
 # Python packages
 import glob
 import os
+import pdb
 import sys
 import argparse
 from subprocess import Popen, PIPE
@@ -20,6 +21,7 @@ import constants as c
 from fuzz_utils import quaternion_from_euler, get_carla_transform
 
 import diavio_DSL as sd
+from MyDSL.record_info import DSL2Parser
 
 config.set_carla_api_path()
 try:
@@ -850,11 +852,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 state.speed_lim.append(speed_limit)
                 state.angular_velocity.append(angular_velocity)
 
-                print("(%.2f,%.2f)>(%.2f,%.2f)>(%.2f,%.2f) %.2f m left, %.2f/%d km/h   \r" %(
-                    sp.location.x, sp.location.y, player_loc.x,
-                    player_loc.y, goal_loc.x, goal_loc.y,
-                    player_loc.distance(goal_loc),
-                    speed, speed_limit), end="")
+                # print("(%.2f,%.2f)>(%.2f,%.2f)>(%.2f,%.2f) %.2f m left, %.2f/%d km/h   \r" %(
+                #     sp.location.x, sp.location.y, player_loc.x,
+                #     player_loc.y, goal_loc.x, goal_loc.y,
+                #     player_loc.distance(goal_loc),
+                #     speed, speed_limit), end="")
 
                 if player.is_at_traffic_light():
                     traffic_light = player.get_traffic_light()
@@ -1042,6 +1044,17 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                                 actor_vehicle.set_target_velocity(
                                     dir_vec * force_constant
                                 )
+                # record MyDSL every x timestamps
+                if state.num_frames % c.FRAME_RATE == 0:
+                    parser = DSL2Parser(world)
+                    parser.set_ads(player)
+                    parser.get_actors()
+                    parser.previous_scene = state.DSLScene
+                    scene = parser.parse_scene()
+                    state.DSLScene = scene
+                    print(scene)
+
+
 
                 # Check Autoware-defined destination
                 # VehicleReady\nDriving\nMoving\nLaneArea\nCruise\nStraight\nDrive\nGo\n

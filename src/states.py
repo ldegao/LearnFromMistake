@@ -40,6 +40,7 @@ class State:
         self.on_red_speed = []
         self.red_violation = False
         self.red_violation_record = []
+        self.json_data_buffer = []
 
         self.weather = {}
 

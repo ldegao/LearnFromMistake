@@ -58,6 +58,7 @@ class Config:
         self.determ_seed = None
         self.out_dir = None
         self.seed_dir = None
+        self.time_record_dir = None
 
         # Target config
         self.agent_type = c.AUTOWARE # c.AUTOWARE
@@ -77,7 +78,7 @@ class Config:
 
         # Sim-debug settings
         self.view = c.BIRDSEYE
-
+        self.username = os.environ['USER']
 
     def set_paths(self):
         self.queue_dir = os.path.join(self.out_dir, "queue")
@@ -87,6 +88,7 @@ class Config:
         self.cam_dir = os.path.join(self.out_dir, "camera")
         self.rosbag_dir = os.path.join(self.out_dir, "rosbags")
         self.score_dir = os.path.join(self.out_dir, "scores")
+        self.time_record_dir = os.path.join(self.out_dir, "time_record")
 
     def enqueue_seed_scenarios(self):
         try:

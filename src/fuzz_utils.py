@@ -1,5 +1,7 @@
+import cProfile
 import os
 import json
+import pstats
 import time
 import datetime
 import shutil
@@ -26,32 +28,32 @@ import constants as c
 
 
 # def dry_run(conf, client, tm, town, sp, wp, weather):
-    # """
-    # Dry-runs the base scenario to infer the oracle state
-    # params: None
-    # return: packed object of feedbacks (tbd)
-    # """
-    # return # debug
+# """
+# Dry-runs the base scenario to infer the oracle state
+# params: None
+# return: packed object of feedbacks (tbd)
+# """
+# return # debug
 
-    # dry_run_states = []
+# dry_run_states = []
 
-    # for i in range(conf.num_dry_runs):
-        # print("performing {}-th dry run".format(i+1))
-        # executor.simulate(client, town, tm, sp, wp, weather, [], [])
-        # state = {
-            # "num_frames": states.NUM_FRAMES,
-            # "elapsed_time": states.ELAPSED_TIME,
-            # "crash": states.COLLISION_EVENT,
-            # "lane_invasions": states.LANEINVASION_EVENT,
-            # "isstuck": states.STUCK,
-            # # "avg_iae_lon": sum(states.IAE_LON) / len(states.IAE_LON),
-            # # "avg_iae_lat": sum(states.IAE_LAT) / len(states.IAE_LAT)
-        # }
-        # dry_run_states.append(state)
+# for i in range(conf.num_dry_runs):
+# print("performing {}-th dry run".format(i+1))
+# executor.simulate(client, town, tm, sp, wp, weather, [], [])
+# state = {
+# "num_frames": states.NUM_FRAMES,
+# "elapsed_time": states.ELAPSED_TIME,
+# "crash": states.COLLISION_EVENT,
+# "lane_invasions": states.LANEINVASION_EVENT,
+# "isstuck": states.STUCK,
+# # "avg_iae_lon": sum(states.IAE_LON) / len(states.IAE_LON),
+# # "avg_iae_lat": sum(states.IAE_LAT) / len(states.IAE_LAT)
+# }
+# dry_run_states.append(state)
 
-    # # get oracle states out of dry_run_states, and return
-    # # now just consider raw states as an oracle
-    # return dry_run_states
+# # get oracle states out of dry_run_states, and return
+# # now just consider raw states as an oracle
+# return dry_run_states
 
 
 def get_carla_transform(loc_rot_tuples):
@@ -115,8 +117,8 @@ def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
         firstaxis, parity, repetition, frame = axes
 
     i = firstaxis
-    j = _NEXT_AXIS[i+parity]
-    k = _NEXT_AXIS[i-parity+1]
+    j = _NEXT_AXIS[i + parity]
+    k = _NEXT_AXIS[i - parity + 1]
 
     if frame:
         ai, ak = ak, ai
@@ -132,22 +134,22 @@ def quaternion_from_euler(ai, aj, ak, axes='sxyz'):
     sj = math.sin(aj)
     ck = math.cos(ak)
     sk = math.sin(ak)
-    cc = ci*ck
-    cs = ci*sk
-    sc = si*ck
-    ss = si*sk
+    cc = ci * ck
+    cs = ci * sk
+    sc = si * ck
+    ss = si * sk
 
-    quaternion = np.empty((4, ), dtype=np.float64)
+    quaternion = np.empty((4,), dtype=np.float64)
     if repetition:
-        quaternion[i] = cj*(cs + sc)
-        quaternion[j] = sj*(cc + ss)
-        quaternion[k] = sj*(cs - sc)
-        quaternion[3] = cj*(cc - ss)
+        quaternion[i] = cj * (cs + sc)
+        quaternion[j] = sj * (cc + ss)
+        quaternion[k] = sj * (cs - sc)
+        quaternion[3] = cj * (cc - ss)
     else:
-        quaternion[i] = cj*sc - sj*cs
-        quaternion[j] = cj*ss + sj*cc
-        quaternion[k] = cj*cs - sj*sc
-        quaternion[3] = cj*cc + sj*ss
+        quaternion[i] = cj * sc - sj * cs
+        quaternion[j] = cj * ss + sj * cc
+        quaternion[k] = cj * cs - sj * sc
+        quaternion[3] = cj * cc + sj * ss
     if parity:
         quaternion[j] *= -1
 
@@ -205,20 +207,20 @@ class TestScenario:
             self.seed_data = seed
 
         # self.sp = carla.Transform(
-            # carla.Location(seed["sp_x"], seed["sp_y"], seed["sp_z"]+2),
-            # carla.Rotation(seed["roll"], seed["yaw"], seed["pitch"])
+        # carla.Location(seed["sp_x"], seed["sp_y"], seed["sp_z"]+2),
+        # carla.Rotation(seed["roll"], seed["yaw"], seed["pitch"])
         # )
 
         # self.wp = carla.Transform(
-            # carla.Location(seed["wp_x"], seed["wp_y"], seed["wp_z"]),
-            # carla.Rotation(0.0, seed["wp_yaw"], 0.0)
+        # carla.Location(seed["wp_x"], seed["wp_y"], seed["wp_z"]),
+        # carla.Rotation(0.0, seed["wp_yaw"], 0.0)
         # )
 
         self.town = seed["map"]
         executor.switch_map(conf, self.town)
 
         # self.oracle_state = dry_run(self.conf, self.client, self.tm,
-                # self.town, self.sp, self.wp, self.weather)
+        # self.town, self.sp, self.wp, self.weather)
         # print("oracle:", self.oracle_state)
 
         # executor.get_waypoints()
@@ -229,7 +231,7 @@ class TestScenario:
 
     def get_seed_sp_transform(self, seed):
         sp = carla.Transform(
-            carla.Location(seed["sp_x"], seed["sp_y"], seed["sp_z"]+2),
+            carla.Location(seed["sp_x"], seed["sp_y"], seed["sp_z"] + 2),
             carla.Rotation(seed["roll"], seed["yaw"], seed["pitch"])
         )
 
@@ -243,14 +245,12 @@ class TestScenario:
 
         return wp
 
-
     def get_distance_from_player(self, location):
         sp = self.get_seed_sp_transform(self.seed_data)
         return location.distance(sp.location)
 
-
     def add_actor(self, actor_type, nav_type, location, rotation, speed,
-            sp_idx, dp_idx):
+                  sp_idx, dp_idx):
         """
         Mutator calls `ret = add_actor` with the mutated parameters until ret == 0.
 
@@ -269,11 +269,11 @@ class TestScenario:
 
         # do validity checks
         if nav_type == c.LINEAR or nav_type == c.IMMOBILE:
-            spawn_point = (location, rotation) # carla.Transform(location, rotation)
+            spawn_point = (location, rotation)  # carla.Transform(location, rotation)
             dest_point = None
 
         elif nav_type == c.MANEUVER:
-            spawn_point = (location, rotation) # carla.Transform(location, rotation)
+            spawn_point = (location, rotation)  # carla.Transform(location, rotation)
             dest_point = None
 
             # [direction (-1: L, 0: Fwd, 1: R),
@@ -288,7 +288,7 @@ class TestScenario:
             ]
 
         elif nav_type == c.AUTOPILOT:
-            assert(executor.list_spawn_points)
+            assert (executor.list_spawn_points)
             if sp_idx == dp_idx:
                 return -1
             sp = executor.list_spawn_points[sp_idx]
@@ -322,17 +322,18 @@ class TestScenario:
             return -1
 
         new_actor = {
-                "type": actor_type,
-                "nav_type": nav_type,
-                "spawn_point": spawn_point,
-                "dest_point": dest_point,
-                "speed": speed,
-                "maneuvers": maneuvers
-            }
+            "type": actor_type,
+            "nav_type": nav_type,
+            "spawn_point": spawn_point,
+            "dest_point": dest_point,
+            "speed": speed,
+            "maneuvers": maneuvers,
+            "control": None,
+            "velocity": None
+        }
         self.actors.append(new_actor)
 
         return 0
-
 
     def add_puddle(self, level, location, size):
         """
@@ -357,18 +358,17 @@ class TestScenario:
                 return -1
 
         rotation = (0, 0, 0)
-        spawn_point = (location, rotation) # carla.Transform(location, carla.Rotation())
+        spawn_point = (location, rotation)  # carla.Transform(location, carla.Rotation())
 
         new_puddle = {
-                "level": level,
-                "size": size,
-                "spawn_point": spawn_point
-            }
+            "level": level,
+            "size": size,
+            "spawn_point": spawn_point
+        }
 
         self.puddles.append(new_puddle)
 
         return 0
-
 
     def dump_states(self, state, log_type):
         if self.conf.debug:
@@ -387,15 +387,15 @@ class TestScenario:
         state_dict["npc_id"] = state.npc_id
         state_dict["npc_state"] = dict()
         for id in state.npc_id:
-            state_dict["npc_state"][id] = {"speed":state.get_npc_state(id).speed}
+            state_dict["npc_state"][id] = {"speed": state.get_npc_state(id).speed}
 
         actor_list = []
-        for actor in self.actors: # re-convert from carla.transform to xyz
+        for actor in self.actors:  # re-convert from carla.transform to xyz
             actor_dict = {
-                    "type": actor["type"],
-                    "nav_type": actor["nav_type"],
-                    "speed": actor["speed"],
-                    }
+                "type": actor["type"],
+                "nav_type": actor["nav_type"],
+                "speed": actor["speed"],
+            }
             if actor["spawn_point"] is not None:
                 actor_dict["sp_x"] = actor["spawn_point"][0][0]
                 actor_dict["sp_y"] = actor["spawn_point"][0][1]
@@ -414,11 +414,11 @@ class TestScenario:
         puddle_list = []
         for puddle in self.puddles:
             puddle_dict = {
-                    "level": puddle["level"],
-                    "sp_x": puddle["spawn_point"][0][0],
-                    "sp_y": puddle["spawn_point"][0][1],
-                    "sp_z": puddle["spawn_point"][0][2],
-                    }
+                "level": puddle["level"],
+                "sp_x": puddle["spawn_point"][0][0],
+                "sp_y": puddle["spawn_point"][0][1],
+                "sp_z": puddle["spawn_point"][0][2],
+            }
             puddle_dict["size_x"] = puddle["size"][0]
             puddle_dict["size_y"] = puddle["size"][1]
             puddle_dict["size_z"] = puddle["size"][2]
@@ -434,54 +434,55 @@ class TestScenario:
         state_dict["deductions"] = state.deductions
 
         vehicle_state_dict = {
-                "speed": state.speed,
-                "steer_wheel_angle": state.steer_angle_list,
-                "yaw": state.yaw_list,
-                "yaw_rate": state.yaw_rate_list,
-                "lat_speed": state.lat_speed_list,
-                "lon_speed": state.lon_speed_list,
-                "min_dist": state.min_dist,
-                #"transform": state.transforms
-                }
+            "speed": state.speed,
+            "steer_wheel_angle": state.steer_angle_list,
+            "yaw": state.yaw_list,
+            "yaw_rate": state.yaw_rate_list,
+            "lat_speed": state.lat_speed_list,
+            "lon_speed": state.lon_speed_list,
+            "min_dist": state.min_dist,
+            # "transform": state.transforms
+        }
         state_dict["vehicle_states"] = vehicle_state_dict
 
         control_dict = {
-                "throttle": state.cont_throttle,
-                "brake": state.cont_brake,
-                "steer": state.cont_steer
-                }
+            "throttle": state.cont_throttle,
+            "brake": state.cont_brake,
+            "steer": state.cont_steer
+        }
         state_dict["control_cmds"] = control_dict
 
         event_dict = {
-                "crash": state.crashed,
-                "stuck": state.stuck,
-                "lane_invasion": state.laneinvaded,
-                "red": state.red_violation,
-                "speeding": state.speeding,
-                "other": state.other_error,
-                "other_error_val": state.other_error_val
-                }
+            "crash": state.crashed,
+            "stuck": state.stuck,
+            "lane_invasion": state.laneinvaded,
+            "red": state.red_violation,
+            "speeding": state.speeding,
+            "other": state.other_error,
+            "other_error_val": state.other_error_val
+        }
         state_dict["events"] = event_dict
 
         config_dict = {
-                "fps": c.FRAME_RATE,
-                "max_dist_from_player": c.MAX_DIST_FROM_PLAYER,
-                "min_dist_from_player": c.MIN_DIST_FROM_PLAYER,
-                "abort_seconds": self.conf.timeout,
-                "wait_autoware_num_topics": c.WAIT_AUTOWARE_NUM_TOPICS
-                }
+            "fps": c.FRAME_RATE,
+            "max_dist_from_player": c.MAX_DIST_FROM_PLAYER,
+            "min_dist_from_player": c.MIN_DIST_FROM_PLAYER,
+            "abort_seconds": self.conf.timeout,
+            "wait_autoware_num_topics": c.WAIT_AUTOWARE_NUM_TOPICS
+        }
         state_dict["config"] = config_dict
 
         filename = "{}_{}_{}_{}.json".format(state.campaign_cnt,
-                state.cycle_cnt, state.mutation, datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+                                             state.cycle_cnt, state.mutation,
+                                             datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
 
         if log_type == "queue":
             out_dir = self.conf.queue_dir
 
         # elif log_type == "error":
-            # out_dir = self.conf.error_dir
+        # out_dir = self.conf.error_dir
         # elif log_type == "cov":
-            # out_dir = self.conf.cov_dir
+        # out_dir = self.conf.cov_dir
 
         with open(os.path.join(out_dir, filename), "w") as fp:
             json.dump(state_dict, fp, indent=" ")
@@ -490,7 +491,6 @@ class TestScenario:
             print("[*] dumped")
 
         return filename
-
 
     def run_test(self, state):
         if self.conf.debug:
@@ -501,7 +501,8 @@ class TestScenario:
         sp = self.get_seed_sp_transform(self.seed_data)
         wp = self.get_seed_wp_transform(self.seed_data)
         state.weather = self.weather
-
+        profiler = cProfile.Profile()
+        profiler.enable()
 
         ret = executor.simulate(
             conf=self.conf,
@@ -513,8 +514,13 @@ class TestScenario:
             frictions_list=self.puddles,
             actors_list=self.actors
         )
+        profiler.disable()
 
-        #carAccidentsReport: dump report
+        stats = pstats.Stats(profiler)
+        stats.strip_dirs()
+        stats.sort_stats('cumulative')
+        stats.print_stats(50)
+        # carAccidentsReport: dump report
         sd.dump_report()
 
         # print("after sim", time.time())
@@ -551,7 +557,7 @@ class TestScenario:
             error = True
         if self.conf.check_dict["lane"] and state.laneinvaded:
             le_list = state.laneinvasion_event
-            le = le_list[0] # only consider the very first invasion
+            le = le_list[0]  # only consider the very first invasion
             print("Lane invasion:", le)
             lm_list = le.crossed_lane_markings
             for lm in lm_list:
@@ -564,7 +570,7 @@ class TestScenario:
         if self.conf.check_dict["speed"] and state.speeding:
             print("Speeding: {} km/h".format(state.speed[-1]))
             error = True
-        #if self.conf.check_dict["other"] and state.other_error:
+        # if self.conf.check_dict["other"] and state.other_error:
         #    if state.other_error == "timeout":
         #        print("Simulation took too long")
         #    elif state.other_error == "goal":
@@ -576,22 +582,22 @@ class TestScenario:
             if error:
                 # print("copying bag & video files")
                 shutil.copyfile(
-                        os.path.join(self.conf.queue_dir, log_filename),
-                        os.path.join(self.conf.error_dir, log_filename)
-                        )
+                    os.path.join(self.conf.queue_dir, log_filename),
+                    os.path.join(self.conf.error_dir, log_filename)
+                )
                 shutil.copyfile(
-                        "/tmp/fuzzerdata/bagfile.lz4.bag",
-                        os.path.join(self.conf.rosbag_dir, log_filename.replace(".json", ".bag"))
-                        )
+                    "/tmp/fuzzerdata/bagfile.lz4.bag",
+                    os.path.join(self.conf.rosbag_dir, log_filename.replace(".json", ".bag"))
+                )
 
             shutil.copyfile(
-                    "/tmp/fuzzerdata/front.mp4",
-                    os.path.join(self.conf.cam_dir, log_filename.replace(".json", "-front.mp4"))
-                    )
+                "/tmp/fuzzerdata/front.mp4",
+                os.path.join(self.conf.cam_dir, log_filename.replace(".json", "-front.mp4"))
+            )
             shutil.copyfile(
-                    "/tmp/fuzzerdata/rear.mp4",
-                    os.path.join(self.conf.cam_dir, log_filename.replace(".json", "-rear.mp4"))
-                    )
+                "/tmp/fuzzerdata/rear.mp4",
+                os.path.join(self.conf.cam_dir, log_filename.replace(".json", "-rear.mp4"))
+            )
 
         elif self.conf.agent_type == c.BASIC or self.conf.agent_type == c.BEHAVIOR:
             if error:
@@ -698,12 +704,12 @@ class TestScenario:
                 if Vx > 5 and Ay_diff > 0.1:
                     num_oversteer += 1
                     # print("OS @%d %.2f (SWA %.4f Ay %.4f AVz %.4f Vx %.4f)" %(
-                        # fid, os_level, SWA_diff, Ay_diff, yr, Vx))
+                    # fid, os_level, SWA_diff, Ay_diff, yr, Vx))
             if us_level >= us_thres:
                 if Vx > 5 and SWA2 > 10:
                     num_understeer += 1
                     # print("US @%d %.2f (SA %.4f FD %.4f Vx %.4f)" %(
-                        # fid, us_level, sa2, fd, Vx))
+                    # fid, us_level, sa2, fd, Vx))
 
         if self.conf.debug:
             # print("[debug] # ha:", ha)

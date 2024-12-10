@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-
+import cProfile
 # Python packages
 import glob
+import json
 import os
 import pdb
 import sys
@@ -15,13 +16,15 @@ import math
 import traceback
 
 import docker
+import shapely
 
 import config
 import constants as c
+from MyDSL.utils import save_json_to_file
 from fuzz_utils import quaternion_from_euler, get_carla_transform
 
 import diavio_DSL as sd
-from MyDSL.record_info import DSL2Parser
+from MyDSL.record_info import DSL2Parser, record_DSL_data
 
 config.set_carla_api_path()
 try:
@@ -60,10 +63,9 @@ def _on_collision(event, state):
     if event.other_actor.type_id != "static.road":
         # do not count collision while spawning ego vehicle (hard drop)
 
-            state.crashed = True
-            state.collision_event = event
+        state.crashed = True
+        state.collision_event = event
     sd.add_collision(event.actor.id, event.other_actor.id)
-
 
 
 def _on_invasion(event, state):
@@ -83,7 +85,7 @@ def _on_invasion(event, state):
 
     # print(crossed_lane.color, crossed_lane.lane_change, crossed_lane.type)
     # print(type(crossed_lane.color), type(crossed_lane.lane_change),
-            # type(crossed_lane.type))
+    # type(crossed_lane.type))
 
 
 def _on_front_camera_capture(image):
@@ -93,16 +95,17 @@ def _on_front_camera_capture(image):
 def _on_top_camera_capture(image):
     image.save_to_disk(f"/tmp/fuzzerdata/top-{image.frame}.jpg")
 
+
 # def _on_view_image(self, image):
-    # """
-    # Callback when receiving a camera image
-    # """
-    # global _surface
-    # array = np.frombuffer(image.data, dtype=np.dtype("uint8"))
-    # array = np.reshape(array, (image.height, image.width, 4))
-    # array = array[:, :, :3]
-    # array = array[:, :, ::-1]
-    # _surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
+# """
+# Callback when receiving a camera image
+# """
+# global _surface
+# array = np.frombuffer(image.data, dtype=np.dtype("uint8"))
+# array = np.reshape(array, (image.height, image.width, 4))
+# array = array[:, :, :3]
+# array = array[:, :, ::-1]
+# _surface = pygame.surfarray.make_surface(array.swapaxes(0, 1))
 
 
 def set_camera(conf, player, spectator):
@@ -110,7 +113,7 @@ def set_camera(conf, player, spectator):
         cam_over_player(player, spectator)
     elif conf.view == c.ONROOF:
         cam_chase_player(player, spectator)
-    else: # fallthru default
+    else:  # fallthru default
         cam_chase_player(player, spectator)
 
 
@@ -135,7 +138,7 @@ def cam_over_player(player, spectator):
     location = player.get_location()
     location.z += 100
     # rotation = player.get_transform().rotation
-    rotation = carla.Rotation() # fix rotation for better sim performance
+    rotation = carla.Rotation()  # fix rotation for better sim performance
     rotation.pitch -= 90
     spectator.set_transform(
         carla.Transform(location, rotation)
@@ -164,7 +167,7 @@ def connect(conf):
     global client
     global tm
 
-    client = carla.Client(conf.sim_host, conf.sim_port) 
+    client = carla.Client(conf.sim_host, conf.sim_port)
     client.set_timeout(10.0)
     try:
         client.get_server_version()
@@ -174,7 +177,7 @@ def connect(conf):
     if conf.debug:
         print("Connected to:", client)
 
-    tm = client.get_trafficmanager(conf.sim_tm_port) 
+    tm = client.get_trafficmanager(conf.sim_tm_port)
     tm.set_synchronous_mode(True)
     if conf.debug:
         print("Traffic Manager Server:", tm)
@@ -197,8 +200,8 @@ def switch_map(conf, town):
         # if world.get_map().name != town: # force load every time
         if conf.debug:
             print("[*] Switching town to {} (slow)".format(town))
-        client.set_timeout(20) # Handle sluggish loading bug
-        client.load_world(str(town)) # e.g., "/Game/Carla/Maps/Town01"
+        client.set_timeout(20)  # Handle sluggish loading bug
+        client.load_world(str(town))  # e.g., "/Game/Carla/Maps/Town01"
         if conf.debug:
             print("[+] Switched")
         client.set_timeout(10.0)
@@ -211,6 +214,222 @@ def switch_map(conf, town):
         sys.exit(-1)
 
 
+def serialize_vehicle(actor, n=-1):
+    """
+    Extracts the physical properties of a carla.Actor object (vehicle) and returns them as a dictionary.
+    The parameter `n` indicates the number of decimal places for precision (-1 for full precision).
+    """
+
+    def round_value(value):
+        return round(value, n) if n >= 0 else value
+
+    # Get the bounding box (size) of the vehicle
+    bounding_box = actor.bounding_box
+    vehicle_size = {
+        'extent_x': round_value(bounding_box.extent.x),
+        'extent_y': round_value(bounding_box.extent.y),
+        'extent_z': round_value(bounding_box.extent.z)
+    }
+
+    # Get the velocity vector
+    velocity = actor.get_velocity()
+    velocity_data = {
+        'x': round_value(velocity.x),
+        'y': round_value(velocity.y),
+        'z': round_value(velocity.z)
+    }
+
+    # Get the angular velocity vector
+    angular_velocity = actor.get_angular_velocity()
+    angular_velocity_data = {
+        'x': round_value(angular_velocity.x),
+        'y': round_value(angular_velocity.y),
+        'z': round_value(angular_velocity.z)
+    }
+
+    # Get the vehicle's transform (position and rotation)
+    transform = actor.get_transform()
+    transform_data = {
+        'location': {
+            'x': round_value(transform.location.x),
+            'y': round_value(transform.location.y),
+            'z': round_value(transform.location.z)
+        },
+        'rotation': {
+            'pitch': round_value(transform.rotation.pitch),
+            'yaw': round_value(transform.rotation.yaw),
+            'roll': round_value(transform.rotation.roll)
+        }
+    }
+
+    # Combine all data into a dictionary
+    vehicle_data = {
+        'id': actor.id,
+        'type_id': actor.type_id,
+        'is_alive': actor.is_alive,
+        'size': vehicle_size,
+        'velocity': velocity_data,
+        'angular_velocity': angular_velocity_data,
+        'transform': transform_data
+    }
+
+    return vehicle_data
+
+
+def update_vehicle_file(state, closest_cars_list, player, json_cache):
+    # Initialize data structure for the current frame
+    frame_data = {
+        str(state.num_frames): {
+            "NPC": [],
+            "player": serialize_vehicle(player)
+        }
+    }
+
+    # Process closest_cars_list to find NPCs close to the player
+    for closest_cars in closest_cars_list:
+        frame_data[str(state.num_frames)]["NPC"].append(serialize_vehicle(closest_cars, 2))
+
+    # Update json_cache with data for the current frame
+    if state.mutation not in json_cache:
+        json_cache[state.mutation] = {}
+    json_cache[state.mutation].update(frame_data)
+    return json_cache
+
+
+def write_json_cache_to_file(conf, state, json_cache):
+    # Define the file path for JSON output
+    time_record_file = "{}/gid:{}_sid:{}_mid:{}.json".format(conf.time_record_dir, state.campaign_cnt, state.cycle_cnt,
+                                                             state.mutation)
+    time_record_dir = 'output/time_record'
+
+    # Ensure that the directory exists
+    os.makedirs(time_record_dir, exist_ok=True)  # Creates the directory if it doesn't exist
+
+    # Write the entire json_cache data to the file
+    with open(time_record_file, "w") as f:
+        json.dump(json_cache.get(state.mutation, {}), f, indent=4)
+
+    # Return the JSON data and clear the cache for this scenario
+    output_data = json_cache.pop(state.mutation, None)
+    return output_data
+
+
+def record_closest_cars(npc_vehicles, player_loc, state):
+    # record min_dist
+    min_dist = state.min_dist
+    for npc_vehicle in npc_vehicles:
+        distance = npc_vehicle.get_location().distance(player_loc)
+        if distance < min_dist:
+            min_dist = distance
+    if min_dist < state.min_dist:
+        state.min_dist = min_dist
+
+    camera_tf = carla.Transform(
+        carla.Location(x=player_loc.x, y=player_loc.y, z=50.0),
+        carla.Rotation(pitch=-90.0)
+    )
+    return filter_vehicles_in_frustum(npc_vehicles, camera_tf, 105, 800, 600, 50)
+
+
+def is_point_in_polygon(point, polygon):
+    """
+    Check if a point (x, y) is inside the given polygon using ray-casting algorithm.
+
+    :param point: A tuple representing the point (x, y)
+    :param polygon: A list of tuples representing the polygon vertices [(x1, y1), (x2, y2), ...]
+    :return: True if point is inside the polygon, False otherwise
+    """
+    x, y = point
+    n = len(polygon)
+    inside = False
+    p1x, p1y = polygon[0]
+
+    for i in range(n + 1):
+        p2x, p2y = polygon[i % n]
+        if y > min(p1y, p2y):
+            if y <= max(p1y, p2y):
+                if x <= max(p1x, p2x):
+                    if p1y != p2y:
+                        xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
+                    if p1x == p2x or x <= xinters:
+                        inside = not inside
+        p1x, p1y = p2x, p2y
+
+    return inside
+
+
+def filter_vehicles_in_frustum(vehicle_list, camera_transform, vertical_fov, image_width, image_height, camera_height):
+    """
+    Filter vehicles within the frustum defined by the camera's view.
+
+    :param vehicle_list: List of vehicles to check
+    :param camera_transform: Camera's transform (location and rotation)
+    :param vertical_fov: Vertical field of view of the camera (in degrees)
+    :param image_width: Width of the camera's image
+    :param image_height: Height of the camera's image
+    :param camera_height: Height of the camera above the ground
+    :return: List of vehicles within the frustum
+    """
+    # Get frustum vertices from the camera view
+    coords = calculate_view_frustum(
+        camera_transform, vertical_fov, image_width, image_height, camera_height
+    )
+
+    # Assuming that the returned coordinates are a numpy array, we can access them by index
+    frustum_polygon = [(coords[0][0], coords[0][1]), (coords[1][0], coords[1][1]),
+                       (coords[2][0], coords[2][1]), (coords[3][0], coords[3][1])]
+
+    filtered_vehicles = []
+
+    for vehicle in vehicle_list:
+        vehicle_position = vehicle.get_transform().location
+        vehicle_point = (vehicle_position.x, vehicle_position.y)
+
+        # Check if the vehicle is inside the frustum polygon using ray-casting
+        if is_point_in_polygon(vehicle_point, frustum_polygon):
+            filtered_vehicles.append(vehicle)
+
+    return filtered_vehicles
+
+
+def calculate_view_frustum(camera_transform, vertical_fov, image_width, image_height, camera_height):
+    # Step 1: Calculate aspect ratio and horizontal FOV
+    aspect_ratio = image_width / image_height
+    vertical_fov_rad = math.radians(vertical_fov)
+    horizontal_fov_rad = 2 * math.atan(aspect_ratio * math.tan(vertical_fov_rad / 2))
+
+    # Step 2: Correct calculation for ground projection depth (d_ground) based on camera height
+    d_ground = camera_height * math.tan(vertical_fov_rad / 2)
+
+    # Step 3: Calculate the ground projection width (w_ground)
+    w_ground = d_ground * aspect_ratio
+
+    # Step 4: Calculate camera yaw
+    yaw = math.radians(camera_transform.rotation.yaw)
+
+    # Step 5: Calculate frustum in camera coordinates projected onto z=0 (ground level)
+    frustum_camera = np.array([
+        [-w_ground / 2, d_ground],  # Left far corner
+        [w_ground / 2, d_ground],  # Right far corner
+        [-w_ground / 2, 0],  # Left near corner
+        [w_ground / 2, 0]  # Right near corner
+    ])
+
+    # Step 6: Rotate and translate frustum to world coordinates
+    rotation_matrix = np.array([
+        [math.cos(yaw), -math.sin(yaw)],
+        [math.sin(yaw), math.cos(yaw)]
+    ])
+    frustum_world = frustum_camera @ rotation_matrix.T
+
+    # Translate to camera's (x, y) position
+    cam_x, cam_y = camera_transform.location.x, camera_transform.location.y
+    frustum_world[:, 0] += cam_x
+    frustum_world[:, 1] += cam_y
+
+    return frustum_world[0], frustum_world[1], frustum_world[2], frustum_world[3]
+
+
 def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_list):
     # simulate() is always called by TestScenario instance,
     # so we won't need to switch map unless a new instance is created.
@@ -220,13 +439,13 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
     global tm
 
     # always reuse the existing client instance
-    assert(client is not None)
-    assert(tm is not None)
+    assert (client is not None)
+    assert (tm is not None)
 
     # (client, tm) = connect(self.conf)
     # tm = client.get_trafficmanager(tm.get_port())
     # print("TM_CLIENT:", tm, tm.get_port())
-    tm.reset_traffic_lights() # XXX: might need this later
+    tm.reset_traffic_lights()  # XXX: might need this later
     retval = 0
 
     try:
@@ -243,7 +462,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
         blueprint_library = world.get_blueprint_library()
         settings = world.get_settings()
         settings.synchronous_mode = True
-        settings.fixed_delta_seconds = 1.0 / c.FRAME_RATE # FPS
+        settings.fixed_delta_seconds = 1.0 / c.FRAME_RATE  # FPS
         settings.no_rendering_mode = False
         world.apply_settings(settings)
         frame_id = world.tick()
@@ -251,6 +470,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
         frame_0 = frame_id
         start_time = time.time()
         clock = pygame.time.Clock()
+        json_cache = {}
 
         # set weather
         weather = world.get_weather()
@@ -269,9 +489,10 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
         actor_walkers = []
         actor_controllers = []
         actor_frictions = []
+        vehicles = []
         ros_pid = 0
 
-        world.tick() # sync once with simulator
+        world.tick()  # sync once with simulator
 
         # spawn player
         # how DriveFuzz spawns a player vehicle depends on
@@ -293,18 +514,18 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 rotation=goal_rot,
                 life_time=0,
                 thickness=1.0,
-                color=carla.Color(r=0,g=255,b=0)
+                color=carla.Color(r=0, g=255, b=0)
             )
         if conf.agent_type == c.BASIC:
             player = world.try_spawn_actor(player_bp, sp)
             if player is None:
                 print("[-] Failed spawning player")
                 state.spawn_failed = True
-                state.spawn_failed_object = 0 # player
+                state.spawn_failed_object = 0  # player
                 retval = -1
-                return # trap to finally
+                return  # trap to finally
 
-            world.tick() # sync once with simulator
+            world.tick()  # sync once with simulator
             player.set_simulate_physics(True)
 
             agent = BasicAgent(player)
@@ -313,15 +534,15 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
 
         elif conf.agent_type == c.BEHAVIOR:
             player = world.try_spawn_actor(player_bp, sp)
-            state.ego_id = player.id
             if player is None:
                 print("[-] Failed spawning player")
                 state.spawn_failed = True
-                state.spawn_failed_object = 0 # player
+                state.spawn_failed_object = 0  # player
                 retval = -1
-                return # trap to finally
+                return  # trap to finally
+            state.ego_id = player.id
 
-            world.tick() # sync once with simulator
+            world.tick()  # sync once with simulator
             player.set_simulate_physics(True)
 
             agent = BehaviorAgent(
@@ -372,9 +593,9 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 goal_oz = goal_quaternion[2]
                 goal_ow = goal_quaternion[3]
             sp_str = "{},{},{},{},{},{}".format(loc.x, loc.y, loc.z, rot.roll,
-                    rot.pitch, rot.yaw * -1)
+                                                rot.pitch, rot.yaw * -1)
             goal_str = "{},{},{},{},{},{},{}".format(goal_loc.x, goal_loc.y,
-                    goal_loc.z, goal_ox, goal_oy, goal_oz, goal_ow)
+                                                     goal_loc.z, goal_ox, goal_oy, goal_oz, goal_ow)
 
             docker_client = docker.from_env()
             proj_root = config.get_proj_root()
@@ -384,24 +605,24 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 "{}/carla-autoware/autoware-contents".format(proj_root): {
                     "bind": "/home/autoware/autoware-contents",
                     "mode": "ro"
-                    },
+                },
                 "/tmp/.X11-unix": {
                     "bind": "/tmp/.X11-unix",
                     "mode": "rw"
-                    },
+                },
                 f"/home/{username}/.Xauthority": {
                     "bind": xauth,
                     "mode": "rw"
-                    },
+                },
                 "/tmp/fuzzerdata": {
                     "bind": "/tmp/fuzzerdata",
                     "mode": "rw"
-                    }
                 }
+            }
             env_dict = {
                 "DISPLAY": os.getenv("DISPLAY"),
-                "XAUTHORITY":xauth
-                }
+                "XAUTHORITY": xauth
+            }
 
             autoware_cla = "{} \'{}\'".format(town_map.name, sp_str)
             print(autoware_cla)
@@ -412,17 +633,17 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
             while autoware_container is None:
                 try:
                     autoware_container = docker_client.containers.run(
-                            "carla-autoware:improved",
-                            command=autoware_cla,
-                            detach=True,
-                            auto_remove=True,
-                            name="autoware-{}".format(os.getenv("USER")),
-                            volumes=vol_dict,
-                            privileged=True,
-                            network_mode="host",
-                            runtime="nvidia",
-                            environment=env_dict,
-                        )
+                        "carla-autoware:improved",
+                        command=autoware_cla,
+                        detach=True,
+                        auto_remove=True,
+                        name="autoware-{}".format(os.getenv("USER")),
+                        volumes=vol_dict,
+                        privileged=True,
+                        network_mode="host",
+                        runtime="nvidia",
+                        environment=env_dict,
+                    )
                 except docker.errors.APIError as e:
                     print("[-] Could not launch docker:", e)
                     if "Conflict" in str(e):
@@ -446,14 +667,14 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
             autoware_agent_found = False
             i = 0
             while True:
-                print("[*] Waiting for Autoware agent " + "."*i + "\r", end="")
+                print("[*] Waiting for Autoware agent " + "." * i + "\r", end="")
                 vehicles = world.get_actors().filter("*vehicle.*")
                 for vehicle in vehicles:
                     if vehicle.attributes["role_name"] == "ego_vehicle":
                         autoware_agent_found = True
                         player = vehicle
                         print("\n    [*] found [{}] at {}".format(player.id,
-                            player.get_location()))
+                                                                  player.get_location()))
                         break
                 if autoware_agent_found:
                     break
@@ -463,10 +684,10 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 i += 1
                 time.sleep(0.5)
 
-            world.tick() # sync with simulator
+            world.tick()  # sync with simulator
             player.set_transform(sp)
             while True:
-                world.tick() # spin until the player is moved to the sp
+                world.tick()  # spin until the player is moved to the sp
                 if player.get_location().distance(sp.location) < 1:
                     break
 
@@ -477,14 +698,14 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
         # Attach collision detector
         collision_bp = blueprint_library.find('sensor.other.collision')
         sensor_collision = world.spawn_actor(collision_bp, carla.Transform(),
-                attach_to=player)
+                                             attach_to=player)
         sensor_collision.listen(lambda event: _on_collision(event, state))
         sensors.append(sensor_collision)
 
         # Attach lane invasion sensor
         lanesensor_bp = blueprint_library.find("sensor.other.lane_invasion")
         sensor_lane = world.spawn_actor(lanesensor_bp, carla.Transform(),
-                attach_to=player)
+                                        attach_to=player)
         sensor_lane.listen(lambda event: _on_invasion(event, state))
         sensors.append(sensor_lane)
 
@@ -503,10 +724,10 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
             # rgb_camera_bp.set_attribute("sensor_tick", "1.0")
 
             camera_front = world.spawn_actor(
-                    rgb_camera_bp,
-                    camera_tf,
-                    attach_to=player,
-                    attachment_type=carla.AttachmentType.Rigid
+                rgb_camera_bp,
+                camera_tf,
+                attach_to=player,
+                attachment_type=carla.AttachmentType.Rigid
             )
 
             camera_front.listen(lambda image: _on_front_camera_capture(image))
@@ -518,15 +739,15 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 carla.Rotation(pitch=-90.0)
             )
             camera_top = world.spawn_actor(
-                    rgb_camera_bp,
-                    camera_tf,
-                    attach_to=player,
-                    attachment_type=carla.AttachmentType.Rigid
+                rgb_camera_bp,
+                camera_tf,
+                attach_to=player,
+                attachment_type=carla.AttachmentType.Rigid
             )
 
             camera_top.listen(lambda image: _on_top_camera_capture(image))
 
-        world.tick() # sync with simulator
+        world.tick()  # sync with simulator
 
         # get vehicle's maximum steering angle 
         physics_control = player.get_physics_control()
@@ -557,20 +778,20 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
             )
 
             friction_trigger = world.try_spawn_actor(
-                                friction_bp, friction_sp_transform)
+                friction_bp, friction_sp_transform)
 
             if friction_trigger is None:
                 print("[-] Failed spawning lvl {} puddle at ({}, {})".format(
                     friction["level"],
                     friction_sp_transform.location.x,
                     friction_sp_transform.location.y)
-                    )
+                )
 
                 state.spawn_failed = True
                 state.spawn_failed_object = friction
                 retval = -1
                 return
-            actor_frictions.append(friction_trigger) # to destroy later
+            actor_frictions.append(friction_trigger)  # to destroy later
 
             # Optional for visualizing trigger (for debugging)
             if conf.debug:
@@ -581,24 +802,24 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                     ),
                     rotation=friction_sp_transform.rotation,
                     life_time=0,
-                    thickness=friction["level"] * 1, # the stronger the thicker
-                    color=carla.Color(r=0,g=0,b=255)
+                    thickness=friction["level"] * 1,  # the stronger the thicker
+                    color=carla.Color(r=0, g=0, b=255)
                 )
-            print("[+] New puddle [%d] @(%.2f, %.2f) lvl %.2f"  %(
-                    friction_trigger.id,
-                    friction_sp_transform.location.x,
-                    friction_sp_transform.location.y,
-                    friction["level"])
-                )
+            print("[+] New puddle [%d] @(%.2f, %.2f) lvl %.2f" % (
+                friction_trigger.id,
+                friction_sp_transform.location.x,
+                friction_sp_transform.location.y,
+                friction["level"])
+                  )
 
         # spawn actors
         vehicle_bp = blueprint_library.find("vehicle.bmw.grandtourer")
         vehicle_bp.set_attribute("color", "255,0,0")
-        walker_bp = blueprint_library.find("walker.pedestrian.0001") # 0001~0014
+        walker_bp = blueprint_library.find("walker.pedestrian.0001")  # 0001~0014
         walker_controller_bp = blueprint_library.find('controller.ai.walker')
         for actor in actors_list:
             actor_sp = get_carla_transform(actor["spawn_point"])
-            if actor["type"] == c.VEHICLE: # vehicle
+            if actor["type"] == c.VEHICLE:  # vehicle
                 actor_vehicle = world.try_spawn_actor(vehicle_bp, actor_sp)
                 actor_nav = c.NAVTYPE_NAMES[actor["nav_type"]]
                 if actor_vehicle is None:
@@ -606,23 +827,23 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                     print("[-] Failed spawning {} {} at ({}, {})".format(
                         actor_nav, actor_str, actor_sp.location.x,
                         actor_sp.location.y)
-                        )
+                    )
 
                     state.spawn_failed = True
                     state.spawn_failed_object = actor
                     retval = -1
-                    return # trap to finally
+                    return  # trap to finally
 
                 actor_vehicles.append(actor_vehicle)
-                print("[+] New %s vehicle [%d] @(%.2f, %.2f) yaw %.2f" %(
-                        actor_nav,
-                        actor_vehicle.id,
-                        actor_sp.location.x,
-                        actor_sp.location.y,
-                        actor_sp.rotation.yaw)
-                    )
+                print("[+] New %s vehicle [%d] @(%.2f, %.2f) yaw %.2f" % (
+                    actor_nav,
+                    actor_vehicle.id,
+                    actor_sp.location.x,
+                    actor_sp.location.y,
+                    actor_sp.rotation.yaw)
+                      )
 
-            elif actor["type"] == c.WALKER: # walker
+            elif actor["type"] == c.WALKER:  # walker
                 actor_walker = world.try_spawn_actor(walker_bp, actor_sp)
                 actor_nav = c.NAVTYPE_NAMES[actor["nav_type"]]
                 if actor_walker is None:
@@ -630,21 +851,21 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                     print("[-] Failed spawning {} {} at ({}, {})".format(
                         actor_nav, actor_str, actor_sp.location.x,
                         actor_sp.location.y)
-                        )
+                    )
 
                     state.spawn_failed = True
                     state.spawn_failed_object = actor
                     retval = -1
-                    return # trap to finally
+                    return  # trap to finally
 
                 actor_walkers.append(actor_walker)
-                print("[+] New %s walker [%d] @(%.2f, %.2f) yaw %.2f" %(
-                        actor_nav,
-                        actor_walker.id,
-                        actor_sp.location.x,
-                        actor_sp.location.y,
-                        actor_sp.rotation.yaw)
-                    )
+                print("[+] New %s walker [%d] @(%.2f, %.2f) yaw %.2f" % (
+                    actor_nav,
+                    actor_walker.id,
+                    actor_sp.location.x,
+                    actor_sp.location.y,
+                    actor_sp.rotation.yaw)
+                      )
         # print("after spawning actors", time.time())
 
         if conf.agent_type == c.AUTOWARE:
@@ -661,7 +882,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 proc2 = Popen(["wc", "-l"], stdin=proc1.stdout, stdout=PIPE)
                 proc1.stdout.close()
                 output = proc2.communicate()[0]
-                
+
                 num_topics = c.WAIT_AUTOWARE_NUM_TOPICS + num_vehicle_topics + num_walker_topics
                 if int(output) >= num_topics:
                     # FIXME: hardcoding the num of topics :/
@@ -680,32 +901,33 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
             # decision-maker state, with which we can get an idea of when Autoware
             # thinks it has reached the goal
             proc_state = Popen(["rostopic echo /decision_maker/state"],
-                    shell=True, stdout=PIPE, stderr=PIPE)
+                               shell=True, stdout=PIPE, stderr=PIPE)
 
             # set_camera(conf, player, spectator)
             print("line 688")
             # Wait for Autoware (esp, for Town04)
             while True:
                 output_state = proc_state.stdout.readline()
-                #print(output_state)
+                # print(output_state)
                 if b"---" in output_state:
                     output_state = proc_state.stdout.readline()
                 if b"VehicleReady" in output_state:
                     break
                 time.sleep(0.5)
-            
+
             print("line 697")
             pub_topic = "/move_base_simple/goal"
             msg_type = "geometry_msgs/PoseStamped"
             goal_hdr = "header: {stamp: now, frame_id: \'map\'}"
-            goal_pose = "pose: {position: {x: %.6f, y: %.6f, z: 0}, orientation: {x: %.6f, y: %.6f, z: %.6f, w: %.6f}}" %(goal_loc.x, (-1) * float(goal_loc.y), goal_ox, goal_oy, goal_oz, goal_ow)
+            goal_pose = "pose: {position: {x: %.6f, y: %.6f, z: 0}, orientation: {x: %.6f, y: %.6f, z: %.6f, w: %.6f}}" % (
+                goal_loc.x, (-1) * float(goal_loc.y), goal_ox, goal_oy, goal_oz, goal_ow)
             goal_msg = "'{" + goal_hdr + ", " + goal_pose + "}'"
             pub_cmd = "rostopic pub --once {} {} {} > /dev/null".format(pub_topic, msg_type, goal_msg)
             os.system(pub_cmd)
             if conf.debug:
                 print(goal_msg)
             print("[carla] Goal published")
-            time.sleep(1) # give some time (Autoware initialization is slow)
+            time.sleep(1)  # give some time (Autoware initialization is slow)
             state.autoware_goal = pub_cmd
 
             world.tick()
@@ -715,10 +937,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
         # handle actor missions after Autoware's goal is published
         cnt_v = 0
         cnt_w = 0
+        # change actor info here
         for actor in actors_list:
             actor_sp = get_carla_transform(actor["spawn_point"])
             actor_dp = get_carla_transform(actor["dest_point"])
-            if actor["type"] == c.VEHICLE: # vehicle
+            if actor["type"] == c.VEHICLE:  # vehicle
                 print("executor.py 718 in (if type == vehicle)")
                 actor_vehicle = actor_vehicles[cnt_v]
                 state.npc_id.append(actor_vehicle.id)
@@ -737,7 +960,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                     actor_vehicle.set_autopilot(True, tm.get_port())
 
                 actor_vehicle.set_simulate_physics(True)
-            elif actor["type"] == c.WALKER: # walker
+            elif actor["type"] == c.WALKER:  # walker
                 actor_walker = actor_walkers[cnt_w]
                 cnt_w += 1
                 if actor["nav_type"] == c.LINEAR:
@@ -749,11 +972,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
 
                 elif actor["nav_type"] == c.AUTOPILOT:
                     controller_walker = world.spawn_actor(
-                            walker_controller_bp,
-                            actor_sp,
-                            actor_walker)
+                        walker_controller_bp,
+                        actor_sp,
+                        actor_walker)
 
-                    world.tick() # without this, walker vanishes
+                    world.tick()  # without this, walker vanishes
                     controller_walker.start()
                     controller_walker.set_max_speed(float(actor["speed"]))
                     controller_walker.go_to_location(actor_dp.location)
@@ -761,7 +984,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 elif actor["nav_type"] == c.IMMOBILE:
                     controller_walker = None
 
-                if controller_walker: # can be None if immobile walker
+                if controller_walker:  # can be None if immobile walker
                     actor_controllers.append(controller_walker)
 
         elapsed_time = 0
@@ -795,7 +1018,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
 
             if conf.debug:
                 print("[*] START DRIVING: {} {}".format(first_frame_id,
-                    first_sim_time))
+                                                        first_sim_time))
 
             # carAccidentsReport:init
             sd.init_global(state, client)
@@ -817,7 +1040,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                     # skip if we got the same frame data as last
                     continue
 
-                last_frame_id = cur_frame_id # update last
+                last_frame_id = cur_frame_id  # update last
                 state.num_frames = cur_frame_id - first_frame_id
                 state.elapsed_time = cur_sim_time - first_sim_time
 
@@ -831,6 +1054,9 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 speed = 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
                 speed_limit = player.get_speed_limit()
                 angular_velocity = player.get_angular_velocity()
+
+                closest_cars_list = record_closest_cars(vehicles, player_loc, state)
+                json_cache = update_vehicle_file(state, closest_cars_list, player, json_cache)
 
                 # NPC state
                 for id in state.npc_id:
@@ -852,11 +1078,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 state.speed_lim.append(speed_limit)
                 state.angular_velocity.append(angular_velocity)
 
-                # print("(%.2f,%.2f)>(%.2f,%.2f)>(%.2f,%.2f) %.2f m left, %.2f/%d km/h   \r" %(
-                #     sp.location.x, sp.location.y, player_loc.x,
-                #     player_loc.y, goal_loc.x, goal_loc.y,
-                #     player_loc.distance(goal_loc),
-                #     speed, speed_limit), end="")
+                print("(%.2f,%.2f)>(%.2f,%.2f)>(%.2f,%.2f) %.2f m left, %.2f/%d km/h   \r" % (
+                    sp.location.x, sp.location.y, player_loc.x,
+                    player_loc.y, goal_loc.x, goal_loc.y,
+                    player_loc.distance(goal_loc),
+                    speed, speed_limit), end="")
 
                 if player.is_at_traffic_light():
                     traffic_light = player.get_traffic_light()
@@ -882,11 +1108,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                             state.red_violation_record.append(frame_count)
 
                 # world.debug.draw_point(
-                        # player_loc + carla.Location(z=10),
-                        # size=0.1,
-                        # life_time=0.1,
-                        # color=carla.Color(255, 0, 0)
-                    # )
+                # player_loc + carla.Location(z=10),
+                # size=0.1,
+                # life_time=0.1,
+                # color=carla.Color(255, 0, 0)
+                # )
                 # set_camera(player, spectator)
 
                 if conf.agent_type == c.BASIC:
@@ -960,7 +1186,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 # lat_speed = vel.x * right_vel.x + vel.y * right_vel.y
 
                 lat_speed = abs(vel.x * player_right_vec.x + vel.y * player_right_vec.y)
-                lat_speed *= 3.6 # m/s to km/h
+                lat_speed *= 3.6  # m/s to km/h
                 state.lat_speed_list.append(lat_speed)
 
                 player_fwd_vec = player_rot.get_forward_vector()
@@ -993,7 +1219,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                             forward_vec = get_carla_transform(
                                 actor["spawn_point"]).rotation.get_forward_vector()
 
-                            if actor_direction == 0: # forward
+                            if actor_direction == 0:  # forward
 
                                 actor_vehicle.set_target_velocity(
                                     forward_vec * actor_speed
@@ -1016,7 +1242,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                             """
 
                             theta_max = apex_degree
-                            force_constant = 5 # should weigh by actor_speed?
+                            force_constant = 5  # should weigh by actor_speed?
 
                             t = abs(maneuver[2] - state.num_frames)
                             if t < 20:
@@ -1024,11 +1250,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                             else:
                                 theta = t * -1 * (theta_max / 20) + 2 * theta_max
 
-                            if actor_direction != 0: # skip if fwd
-                                if actor_direction == -1: # switch to left lane
-                                    theta *= -1 # turn cc-wise
-                                elif actor_direction == 1: # switch to right lane
-                                    pass # turn c-wise
+                            if actor_direction != 0:  # skip if fwd
+                                if actor_direction == -1:  # switch to left lane
+                                    theta *= -1  # turn cc-wise
+                                elif actor_direction == 1:  # switch to right lane
+                                    pass  # turn c-wise
 
                                 theta_rad = math.radians(theta)
                                 sin = math.sin(theta_rad)
@@ -1045,17 +1271,9 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                                     dir_vec * force_constant
                                 )
                 # record MyDSL every x timestamps
-                if state.num_frames % c.FRAME_RATE == 0:
-                    parser = DSL2Parser(world)
-                    parser.set_ads(player)
-                    parser.get_actors()
-                    parser.previous_scene = state.DSLScene
-                    scene = parser.parse_scene()
-                    state.DSLScene = scene
-                    print(scene)
-
-
-
+                sampling_rate = 5
+                if state.num_frames % (c.FRAME_RATE // sampling_rate) == 0:
+                    record_DSL_data(state, world, town_map, player, c.FRAME_RATE, sampling_rate)
                 # Check Autoware-defined destination
                 # VehicleReady\nDriving\nMoving\nLaneArea\nCruise\nStraight\nDrive\nGo\n
                 # VehicleReady\nWaitOrder\nStopping\nWaitDriveReady\n
@@ -1110,9 +1328,9 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 if conf.check_dict["speed"]:
                     # allow T seconds to slow down if speed limit suddenly
                     # decreases
-                    T = 3 # 0 for strict checking
+                    T = 3  # 0 for strict checking
                     if (speed > speed_limit and
-                        cur_frame_id > frame_speed_lim_changed + T * c.FRAME_RATE):
+                            cur_frame_id > frame_speed_lim_changed + T * c.FRAME_RATE):
                         print("\n[*] Speed violation: {} km/h on a {} km/h road".format(
                             speed, speed_limit))
                         state.speeding = True
@@ -1122,7 +1340,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 # Check crash
                 if conf.check_dict["crash"]:
                     if state.crashed:
-                        print("\n[*] Collision detected: %.2f" %(
+                        print("\n[*] Collision detected: %.2f" % (
                             state.elapsed_time))
                         retval = 1
                         break
@@ -1130,7 +1348,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 # Check lane violation
                 if conf.check_dict["lane"]:
                     if state.laneinvaded:
-                        print("\n[*] Lane invasion detected: %.2f" %(
+                        print("\n[*] Lane invasion detected: %.2f" % (
                             state.elapsed_time))
                         retval = 1
                         break
@@ -1138,13 +1356,13 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 # Check traffic light violation
                 if conf.check_dict["red"]:
                     if state.red_violation:
-                        print("\n[*] Red light violation detected: %.2f" %(
+                        print("\n[*] Red light violation detected: %.2f" % (
                             state.elapsed_time))
                         retval = 1
                         break
 
                 # Check inactivity
-                if speed < 1: # km/h
+                if speed < 1:  # km/h
                     state.stuck_duration += 1
                 else:
                     state.stuck_duration = 0
@@ -1152,19 +1370,19 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 if conf.check_dict["stuck"]:
                     if state.stuck_duration > (conf.timeout * c.FRAME_RATE):
                         state.stuck = True
-                        print("\n[*] Stuck for too long: %d" %(state.stuck_duration))
+                        print("\n[*] Stuck for too long: %d" % (state.stuck_duration))
                         retval = 1
                         break
 
                 if conf.check_dict["other"]:
-                    if state.num_frames > 12000: # over 10 minutes
+                    if state.num_frames > 12000:  # over 10 minutes
                         print("\n[*] Simulation taking too long")
                         state.other_error = "timeout"
                         state.other_error_val = state.num_frames
                         retval = 1
                         break
                     if state.other_error:
-                        print("\n[*] Other error: %d" %(state.signal))
+                        print("\n[*] Other error: %d" % (state.signal))
                         retval = 1
                         break
 
@@ -1191,6 +1409,13 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
         # Finalize simulation
         # rospy.signal_shutdown("fin")
 
+        # save npc json
+        write_json_cache_to_file(conf, state, json_cache)
+
+        # save the DSLScene
+        # save_json_to_file(json_data, output_dir, generation_id, scenario_id)
+        save_json_to_file(state.json_data_buffer, conf.out_dir, state.campaign_cnt, state.cycle_cnt, state.mutation)
+
         if conf.agent_type == c.BASIC or conf.agent_type == c.BEHAVIOR:
             # assemble images into an mp4 container
             # remove jpg files
@@ -1198,7 +1423,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
 
             vid_filename = "/tmp/fuzzerdata/front.mp4"
             if os.path.exists(vid_filename):
-                os.remove(vid_filename) 
+                os.remove(vid_filename)
 
             cmd_cat = "cat /tmp/fuzzerdata/front-*.jpg"
             cmd_ffmpeg = " ".join([
@@ -1271,7 +1496,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
 
             # print("running lcov")
             # lcov_cmd = docker_prefix + "lcov --no-external --capture --directory ./ --output-file /tmp/fuzzerdata/autoware_{}.info".format(
-                    # start_time)
+            # start_time)
             # os.system(lcov_cmd)
             # print("done")
 
@@ -1299,9 +1524,9 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 # still doesn't fix docker hanging..
 
         # if retval == 0:
-            # # update states
-            # state.num_frames = frame_id - frame_0
-            # state.elapsed_time = time.time() - start_time
+        # # update states
+        # state.num_frames = frame_id - frame_0
+        # state.elapsed_time = time.time() - start_time
 
         # Stop sync mode to prevent the simulator from being blocked
         # waiting for another tick.
@@ -1313,24 +1538,24 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
         tm.set_synchronous_mode(False)
 
         # for v in actor_vehicles:
-            # try:
-                # v.set_autopilot(False)
-                # ret = v.destroy()
-                # print("destroyed {}: {}".format(v, ret))
-            # except Exception as e:
-                # print("Failed to destroy {}: {}".format(v, e))
+        # try:
+        # v.set_autopilot(False)
+        # ret = v.destroy()
+        # print("destroyed {}: {}".format(v, ret))
+        # except Exception as e:
+        # print("Failed to destroy {}: {}".format(v, e))
         # for v in actor_vehicles:
-            # v.set_autopilot(False)
-            # ret = v.destroy()
+        # v.set_autopilot(False)
+        # ret = v.destroy()
 
         # for c in actor_controllers:
-            # c.destroy()
+        # c.destroy()
         # for w in actor_walkers:
-            # w.destroy()
+        # w.destroy()
         # for s in sensors:
-            # s.destroy()
+        # s.destroy()
         # for f in actor_frictions:
-            # f.destroy()
+        # f.destroy()
         destroy_commands = []
         for v in actor_vehicles:
             # v.set_autopilot(False)
@@ -1345,7 +1570,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
             if conf.debug:
                 print("[debug] player's last loc:", player.get_location())
             # player.destroy() # yields WARNING: attempting to destroy an actor
-                             # that is already dead
+            # that is already dead
             destroy_commands.append(carla.command.DestroyActor(player))
         # client.apply_batch(destroy_commands)
 
@@ -1441,7 +1666,7 @@ def set_args(argparser):
         "--town",
         default="Town01",
         type=str
-        )
+    )
 
     # spawn point: x, y, z, pitch, yaw, roll
     argparser.add_argument(
@@ -1584,10 +1809,10 @@ if __name__ == '__main__':
             )
 
             frictions_list.append({
-                    "level": friction_level,
-                    "size": friction_box_size,
-                    "spawn_point": friction_spawn_point
-                }
+                "level": friction_level,
+                "size": friction_box_size,
+                "spawn_point": friction_spawn_point
+            }
             )
 
     # parse actors
@@ -1618,15 +1843,15 @@ if __name__ == '__main__':
                 actor_speed = actor[11]
 
                 actors_list.append({
-                        "type": actor_type,
-                        "nav_type": nav_type,
-                        "spawn_point": actor_spawn_point,
-                        "dest_point": actor_dest_point,
-                        "speed": actor_speed
-                    }
+                    "type": actor_type,
+                    "nav_type": nav_type,
+                    "spawn_point": actor_spawn_point,
+                    "dest_point": actor_dest_point,
+                    "speed": actor_speed
+                }
                 )
 
-            elif int(actor[0]) == 2: # placeholder for other actors
+            elif int(actor[0]) == 2:  # placeholder for other actors
                 pass
 
             else:
@@ -1639,14 +1864,14 @@ if __name__ == '__main__':
             sys.exit(-1)
 
         sp = carla.Transform(
-                carla.Location(args.spawn[0], args.spawn[1], args.spawn[2]),
-                carla.Rotation(args.spawn[3], args.spawn[4], args.spawn[5]),
-            )
-    else: # default for Town01
+            carla.Location(args.spawn[0], args.spawn[1], args.spawn[2]),
+            carla.Rotation(args.spawn[3], args.spawn[4], args.spawn[5]),
+        )
+    else:  # default for Town01
         sp = carla.Transform(
-                carla.Location(334.83, 217.1, 1.32),
-                carla.Rotation(0.0, 90, 0.0)
-            )
+            carla.Location(334.83, 217.1, 1.32),
+            carla.Rotation(0.0, 90, 0.0)
+        )
 
     if args.dest:
         if len(args.spawn) != 6:
@@ -1654,7 +1879,7 @@ if __name__ == '__main__':
             sys.exit(-1)
 
         wp = carla.Location(args.dest[0], args.dest[1], args.dest[2])
-    else: # default for Town01
+    else:  # default for Town01
         wp = carla.Location(335.49, 298.81, 1.32)
 
     if args.speed:
@@ -1683,6 +1908,5 @@ if __name__ == '__main__':
     (client, tm) = connect("localhost", 2000, 8000)
 
     ret = simulate(client, town, tm, sp, wp,
-            weather_dict, frictions_list, actors_list)
+                   weather_dict, frictions_list, actors_list)
     print("simulation returned:", ret)
-

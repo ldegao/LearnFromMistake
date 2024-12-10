@@ -1,7 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/src/output/cov" />
+      <excludeFolder url="file://$MODULE_DIR$/src/output/errors" />
+      <excludeFolder url="file://$MODULE_DIR$/src/output/rosbags" />
+      <excludeFolder url="file://$MODULE_DIR$/src/reports/2024-11-27-16-58-28" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210194628" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210195102" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210195240" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210195546" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210195634" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210200014" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210200607" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210202020" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210203635" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210204133" />
+      <excludeFolder url="file://$MODULE_DIR$/src/save/20241210205613" />
+    </content>
     <orderEntry type="jdk" jdkName="Python 3.6" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

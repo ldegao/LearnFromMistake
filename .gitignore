@@ -2,6 +2,8 @@ src/reports/2024-11-27-16-58-28
 out-artifact/*
 out-artifact-*/*
 out-artifact/meta
+src/output/
+src/save/
 gpt/api.txt
 .idea
 /src/seed

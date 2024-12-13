@@ -1,6 +1,7 @@
 import cProfile
 import os
 import json
+import pdb
 import pstats
 import time
 import datetime
@@ -179,6 +180,8 @@ class TestScenario:
         """
         When initializing, perform dry run and get the oracle state
         """
+        self.snap_info = None
+        self.snap_info_last = None
         self.conf = conf
 
         # First, connect to the client once.
@@ -328,8 +331,7 @@ class TestScenario:
             "dest_point": dest_point,
             "speed": speed,
             "maneuvers": maneuvers,
-            "control": None,
-            "velocity": None
+            "id": None
         }
         self.actors.append(new_actor)
 
@@ -501,8 +503,8 @@ class TestScenario:
         sp = self.get_seed_sp_transform(self.seed_data)
         wp = self.get_seed_wp_transform(self.seed_data)
         state.weather = self.weather
-        profiler = cProfile.Profile()
-        profiler.enable()
+        # profiler = cProfile.Profile()
+        # profiler.enable()
 
         ret = executor.simulate(
             conf=self.conf,
@@ -512,16 +514,19 @@ class TestScenario:
             wp=wp,
             weather_dict=self.weather,
             frictions_list=self.puddles,
-            actors_list=self.actors
+            actors_list=self.actors,
+            snap_info=self.snap_info
         )
-        profiler.disable()
+        # profiler.disable()
+        #
+        # stats = pstats.Stats(profiler)
+        # stats.strip_dirs()
+        # stats.sort_stats('cumulative')
+        # stats.print_stats(50)
+        # # carAccidentsReport: dump report
 
-        stats = pstats.Stats(profiler)
-        stats.strip_dirs()
-        stats.sort_stats('cumulative')
-        stats.print_stats(50)
-        # carAccidentsReport: dump report
-        sd.dump_report()
+        # temporary implementation
+        # sd.dump_report()
 
         # print("after sim", time.time())
         # print("before logging", time.time())
@@ -531,9 +536,8 @@ class TestScenario:
 
         if state.spawn_failed:
             obj = state.spawn_failed_object
-            if self.conf.debug:
-                print("failed object:", obj)
-
+            print("failed object:", obj)
+            # pdb.set_trace()
             # don't try to spawn an infeasible actor in the next run
             # XXX: and we need a map of coordinates that represent
             #      spawn-feasibility
@@ -605,20 +609,20 @@ class TestScenario:
                     os.path.join(self.conf.queue_dir, log_filename),
                     os.path.join(self.conf.error_dir, log_filename)
                 )
-
             shutil.copyfile(
                 "/tmp/fuzzerdata/front.mp4",
-                os.path.join(
-                    self.conf.cam_dir,
-                    log_filename.replace(".json", "-front.mp4")
-                )
+                os.path.join(self.conf.cam_dir,
+                             "gid:{}_sid:{}_mid:{}-front.mp4".format(state.campaign_cnt, state.cycle_cnt,
+                                                                     state.mutation))
             )
 
             shutil.copyfile(
                 "/tmp/fuzzerdata/top.mp4",
                 os.path.join(
                     self.conf.cam_dir,
-                    log_filename.replace(".json", "-top.mp4")
+                    "gid:{}_sid:{}_mid:{}-top.mp4".format(state.campaign_cnt,
+                                                            state.cycle_cnt,
+                                                            state.mutation)
                 )
             )
 

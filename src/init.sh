@@ -1,7 +1,7 @@
 #!/bin/bash
 
 fuzzerdata_dir="/tmp/fuzzerdata/$USER"
-docker_name="carla-$USER"
+docker_name="carla-$USER-simulator-1"
 
 # Create fuzzerdata_dir if it doesn't exist
 if [[ ! -d "$fuzzerdata_dir" ]]; then

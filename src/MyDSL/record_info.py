@@ -162,7 +162,8 @@ def determine_moving_restricted_zone(vehicle, map, max_time=5, sampling_time_int
         waypoint = carla_map.get_waypoint(point, project_to_road=False)
         if not waypoint:
             continue  # Skip if there's no valid waypoint
-
+        if waypoint.is_junction:
+            continue  # Skip junction temporary
         # Check if the lane is of Driving type
         if waypoint.lane_type != carla.LaneType.Driving:
             if debug:
@@ -293,7 +294,6 @@ def steer_to_angle_radians(control_steer, max_steer_angle=45):
     control_steer = max(-1.0, min(1.0, control_steer))
     steering_angle_degrees = control_steer * max_steer_angle
     return steering_angle_degrees
-
 
 
 def get_heading_direction(yaw):
@@ -623,6 +623,7 @@ class DSL2Parser:
                 return waypoint
         # If no new lane is found in the sampled points, return the current waypoint
         return current_waypoint
+
     def get_npc_behavior(self, npc):
         """Extract the behavior of a single NPC."""
         transform = npc.get_transform()
@@ -897,7 +898,7 @@ class DSL2Parser:
 
         if restricted_zone_wp:
             ttc_zone = TTC_with_zone(samples, restricted_zone_wp, toreturn="values")[0]
-        #     ttc_values.append((ttc_zone, restricted_zone_wp))  # Append tuple of TTC and source
+            ttc_values.append((ttc_zone, restricted_zone_wp))  # Append tuple of TTC and source
         #
         # # Step 5: Compute TTC for nearby obstacles
         # npc_data = []

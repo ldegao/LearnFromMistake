@@ -20,6 +20,8 @@ import config
 import constants as c
 import states
 import executor
+from MyDSL.utils import find_timestamp, update_actors_speed_and_spawn, \
+    update_seed_from_snap_info, get_dangerous_frame
 
 config.set_carla_api_path()
 try:
@@ -163,7 +165,7 @@ def set_args():
                            help="Seed directory")
     argparser.add_argument("-c", "--max-cycles", default=10, type=int,
                            help="Maximum number of loops")
-    argparser.add_argument("-m", "--max-mutations", default=8, type=int,
+    argparser.add_argument("-m", "--max-mutations", default=3, type=int,
                            help="Size of the mutated population per cycle")
     argparser.add_argument("-d", "--determ-seed", type=float,
                            help="Set seed num for deterministic mutation (e.g., for replaying)")
@@ -538,6 +540,14 @@ def main():
                 signal.alarm(10 * 60)  # timeout after 10 mins
                 try:
                     ret = test_scenario_m.run_test(state)
+                    if state.spawn_failed:
+                        obj = state.spawn_failed_object
+                        if obj in test_scenario.actors:
+                            test_scenario.actors.remove(obj)
+                            print("remove actor from test_scenario", obj)
+                        elif obj in test_scenario.puddles:
+                            test_scenario.puddles.remove(obj)
+                            print("remove puddle from test_scenario", obj)
 
                 except Exception as e:
                     if e.args[0] == "HANG":
@@ -575,10 +585,37 @@ def main():
                     if ret == -1:
                         print("[-] Fatal error occurred during test")
                         exit(-1)
+                # change test_scenario_m here
+                output_queue_dir = conf.out_dir + "/queue/"
+                os.makedirs(output_queue_dir, exist_ok=True)
+                SceneDSL_file = os.path.join(output_queue_dir,
+                                             f"SceneDSL_cid{state.campaign_cnt}:gid:{state.cycle_cnt}_sid:{state.mutation}.json")
+                time_record_file = "./output/time_record/gid:{}_sid:{}_mid:{}.json".format(state.campaign_cnt,
+                                                                                           state.cycle_cnt,
+                                                                                           state.mutation)
 
+                dangerous_frame_first = int(find_timestamp(SceneDSL_file, find_first=True) * c.FRAME_RATE)
+                dangerous_frame_last = int(find_timestamp(SceneDSL_file, find_first=False) * c.FRAME_RATE)
+                if dangerous_frame_first >= 0:
+                    test_scenario_m.snap_info = get_dangerous_frame(time_record_file, dangerous_frame_first)
+                    test_scenario_m.snap_info_last = get_dangerous_frame(time_record_file, dangerous_frame_last)
+                else:
+                    test_scenario_m.snap_info = None
+                    test_scenario_m.snap_info_last = None
+
+                if test_scenario_m.snap_info is not None:
+                    print("snap info:", test_scenario_m.snap_info, "time:", dangerous_frame_first / c.FRAME_RATE)
+                    print("snap info last:", test_scenario_m.snap_info_last, "time:",
+                          dangerous_frame_last / c.FRAME_RATE)
+                    update_actors_speed_and_spawn(test_scenario_m)
+                    print("actors after update:", test_scenario_m.actors)
+                    update_seed_from_snap_info(test_scenario_m, town_map)
+                else:
+                    print("[-] No snap info found, driving_quality_score should be scaled down")
+                    # no dangerous_frame_first, driving_quality_score should be scaled down
+                    test_scenario_m.driving_quality_score /= 10
                 score_list.append(test_scenario_m.driving_quality_score)
                 ### mutation loop ends
-
             if test_scenario_m.found_error:
                 # error detected. start a new cycle with a new seed
                 successor_scenario = test_scenario_m

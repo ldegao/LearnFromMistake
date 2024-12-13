@@ -20,7 +20,7 @@ import shapely
 
 import config
 import constants as c
-from MyDSL.utils import save_json_to_file
+from MyDSL.utils import save_json_to_file, initialize_spawned_vehicles
 from fuzz_utils import quaternion_from_euler, get_carla_transform
 
 import diavio_DSL as sd
@@ -214,24 +214,27 @@ def switch_map(conf, town):
         sys.exit(-1)
 
 
-def serialize_vehicle(actor, n=-1):
+def serialize_vehicle(actor, n=-1, target_location=None):
     """
-    Extracts the physical properties of a carla.Actor object (vehicle) and returns them as a dictionary.
-    The parameter `n` indicates the number of decimal places for precision (-1 for full precision).
+    Serializes the vehicle actor's important properties including type_id, velocity, control, transform,
+    target_location, and wheel data, and returns it as a dictionary.
+
+    :param actor: The carla.Actor object representing the vehicle
+    :param target_location: The target location of the vehicle, if applicable
+    :param n: Number of decimal places for rounding (use -1 for full precision)
+    :return: Dictionary containing serialized vehicle information
     """
 
     def round_value(value):
+        """
+        Helper function to round values to 'n' decimal places, or return as is if n < 0.
+        """
         return round(value, n) if n >= 0 else value
 
-    # Get the bounding box (size) of the vehicle
-    bounding_box = actor.bounding_box
-    vehicle_size = {
-        'extent_x': round_value(bounding_box.extent.x),
-        'extent_y': round_value(bounding_box.extent.y),
-        'extent_z': round_value(bounding_box.extent.z)
-    }
+    # 1. Type ID
+    vehicle_type = actor.type_id
 
-    # Get the velocity vector
+    # 2. Velocity (x, y, z)
     velocity = actor.get_velocity()
     velocity_data = {
         'x': round_value(velocity.x),
@@ -239,15 +242,18 @@ def serialize_vehicle(actor, n=-1):
         'z': round_value(velocity.z)
     }
 
-    # Get the angular velocity vector
-    angular_velocity = actor.get_angular_velocity()
-    angular_velocity_data = {
-        'x': round_value(angular_velocity.x),
-        'y': round_value(angular_velocity.y),
-        'z': round_value(angular_velocity.z)
+    # 3. Control (throttle, steer, brake, hand_brake, reverse, gear)
+    control = actor.get_control()
+    control_data = {
+        'throttle': round_value(control.throttle),
+        'steer': round_value(control.steer),
+        'brake': round_value(control.brake),
+        'hand_brake': control.hand_brake,
+        'reverse': control.reverse,
+        'gear': control.gear
     }
 
-    # Get the vehicle's transform (position and rotation)
+    # 4. Transform (location and rotation)
     transform = actor.get_transform()
     transform_data = {
         'location': {
@@ -262,16 +268,25 @@ def serialize_vehicle(actor, n=-1):
         }
     }
 
+    # # 5. Target Location (if applicable)
+    #
+    # if target_location:
+    #     target_data = {
+    #         'x': round_value(target_location.x),
+    #         'y': round_value(target_location.y),
+    #         'z': round_value(target_location.z)
+    #     }
+
     # Combine all data into a dictionary
     vehicle_data = {
-        'id': actor.id,
-        'type_id': actor.type_id,
-        'is_alive': actor.is_alive,
-        'size': vehicle_size,
+        'type_id': vehicle_type,
         'velocity': velocity_data,
-        'angular_velocity': angular_velocity_data,
-        'transform': transform_data
+        'control': control_data,
+        'transform': transform_data,
+        "id": actor.id
     }
+    # if target_data:
+    #     vehicle_data['target_location'] = target_data
 
     return vehicle_data
 
@@ -430,7 +445,7 @@ def calculate_view_frustum(camera_transform, vertical_fov, image_width, image_he
     return frustum_world[0], frustum_world[1], frustum_world[2], frustum_world[3]
 
 
-def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_list):
+def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_list, snap_info):
     # simulate() is always called by TestScenario instance,
     # so we won't need to switch map unless a new instance is created.
     # switch_map(conf, client, town)
@@ -821,6 +836,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
             actor_sp = get_carla_transform(actor["spawn_point"])
             if actor["type"] == c.VEHICLE:  # vehicle
                 actor_vehicle = world.try_spawn_actor(vehicle_bp, actor_sp)
+
                 actor_nav = c.NAVTYPE_NAMES[actor["nav_type"]]
                 if actor_vehicle is None:
                     actor_str = c.ACTOR_NAMES[actor["type"]]
@@ -833,7 +849,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                     state.spawn_failed_object = actor
                     retval = -1
                     return  # trap to finally
-
+                actor["id"] = actor_vehicle.id
                 actor_vehicles.append(actor_vehicle)
                 print("[+] New %s vehicle [%d] @(%.2f, %.2f) yaw %.2f" % (
                     actor_nav,
@@ -857,7 +873,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                     state.spawn_failed_object = actor
                     retval = -1
                     return  # trap to finally
-
+                actor["id"] = actor_vehicle.id
                 actor_walkers.append(actor_walker)
                 print("[+] New %s walker [%d] @(%.2f, %.2f) yaw %.2f" % (
                     actor_nav,
@@ -934,6 +950,7 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
             # print("after launching autoware", time.time())
 
         # print("real simulation begins", time.time())
+
         # handle actor missions after Autoware's goal is published
         cnt_v = 0
         cnt_w = 0
@@ -986,7 +1003,10 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
 
                 if controller_walker:  # can be None if immobile walker
                     actor_controllers.append(controller_walker)
-
+        # for NPC information
+        world.tick()
+        if snap_info is not None:
+            initialize_spawned_vehicles(snap_info, actor_vehicles, player)
         elapsed_time = 0
         start_time = time.time()
 
@@ -1055,7 +1075,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 speed_limit = player.get_speed_limit()
                 angular_velocity = player.get_angular_velocity()
 
-                closest_cars_list = record_closest_cars(vehicles, player_loc, state)
+                # record car with 50m
+                closest_cars_list = []
+                for actor_vehicle in actor_vehicles:
+                    if player_loc.distance(actor_vehicle.get_location()) < 50:
+                        closest_cars_list.append(actor_vehicle)
                 json_cache = update_vehicle_file(state, closest_cars_list, player, json_cache)
 
                 # NPC state
@@ -1078,11 +1102,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 state.speed_lim.append(speed_limit)
                 state.angular_velocity.append(angular_velocity)
 
-                print("(%.2f,%.2f)>(%.2f,%.2f)>(%.2f,%.2f) %.2f m left, %.2f/%d km/h   \r" % (
-                    sp.location.x, sp.location.y, player_loc.x,
-                    player_loc.y, goal_loc.x, goal_loc.y,
-                    player_loc.distance(goal_loc),
-                    speed, speed_limit), end="")
+                # print("(%.2f,%.2f)>(%.2f,%.2f)>(%.2f,%.2f) %.2f m left, %.2f/%d km/h   \r" % (
+                #     sp.location.x, sp.location.y, player_loc.x,
+                #     player_loc.y, goal_loc.x, goal_loc.y,
+                #     player_loc.distance(goal_loc),
+                #     speed, speed_limit), end="")
 
                 if player.is_at_traffic_light():
                     traffic_light = player.get_traffic_light()

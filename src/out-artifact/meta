@@ -1,0 +1,2 @@
+/home/linshenghao/LearnFromMistake/src/fuzzer.py -o out-artifact -s seed-artifact -c 5 -m 5 -t behavior --timeout 60 --town 1 --strategy all
+start: 1741607754

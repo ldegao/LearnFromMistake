@@ -611,21 +611,14 @@ class TestScenario:
                 )
             shutil.copyfile(
                 "/tmp/fuzzerdata/front.mp4",
-                os.path.join(self.conf.cam_dir,
-                             "gid:{}_sid:{}_mid:{}-front.mp4".format(state.campaign_cnt, state.cycle_cnt,
-                                                                     state.mutation))
+                os.path.join(self.conf.cam_dir, log_filename.replace(".json", "-front.mp4"))
             )
 
             shutil.copyfile(
                 "/tmp/fuzzerdata/top.mp4",
                 os.path.join(
-                    self.conf.cam_dir,
-                    "gid:{}_sid:{}_mid:{}-top.mp4".format(state.campaign_cnt,
-                                                            state.cycle_cnt,
-                                                            state.mutation)
-                )
+                    self.conf.cam_dir, log_filename.replace(".json", "-top.mp4"))
             )
-
         # print("after file ops", time.time())
 
         if not self.conf.function.startswith("eval"):

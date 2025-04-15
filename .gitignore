@@ -8,3 +8,32 @@ gpt/api.txt
 .idea
 /src/seed
 /src/seed-artifact
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# System
+.DS_Store
+*.swp
+
+# Logs and outputs
+nohup.out
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# Carla output data
+/home/linshenghao/carla_data/
+*.egg
+*.unrealengine
+
+# Temporary
+*.tmp
+*.bak
+*.out
+*.json

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 fuzzerdata_dir="/tmp/fuzzerdata/$USER"
-docker_name="carla-$USER-simulator-1"
+docker_name="carla-$USER"
 
 # Create fuzzerdata_dir if it doesn't exist
 if [[ ! -d "$fuzzerdata_dir" ]]; then
@@ -30,7 +30,6 @@ echo "Deleted files in $fuzzerdata_dir"
 # Remove directories
 rm -rf output
 rm -rf seed-artifact
-rm -rf seed
 
 # Remove Docker containers
 containers=$(docker ps -a --filter ancestor=carla-autoware:improved-df --format="{{.ID}}")

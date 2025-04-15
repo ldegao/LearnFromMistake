@@ -1,12 +1,13 @@
 #!/bin/bash
 
-
-if [ "$USER" == "chenpansong" ] || [ "$USER" == "linshenghao" ]; then
-    COMPOSE_FILE="carla-compose-${USER}.yml"
-else
-    COMPOSE_FILE="carla-compose.yml"
-fi
-
-echo "${COMPOSE_FILE}"
-
-docker-compose -f $COMPOSE_FILE  -p carla-${USER}  up -d
+docker run --name="carla-$USER" \
+  -d --rm \
+  -p 5000-5002:5000-5002 \
+  --runtime=nvidia -e NVIDIA_VISIBLE_DEVICES=0 --gpus 'device=1' \
+  carlasim/carla:0.9.10.1 \
+  /bin/bash -c  \
+  'SDL_VIDEODRIVER=offscreen CUDA_DEVICE_ORDER=PCI_BUS_ID \
+  CUDA_VISIBLE_DEVICES=1 ./CarlaUE4.sh -ResX=640 -ResY=360 \
+  -nosound -windowed -opengl \
+  -carla-rpc-port=5000 \
+  -quality-level=Epic'

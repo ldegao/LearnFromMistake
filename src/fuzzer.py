@@ -539,6 +539,10 @@ def main():
 
                 signal.alarm(10 * 60)  # timeout after 10 mins
                 try:
+                    recorder_name = "{}_{}_{}_{}".format(state.campaign_cnt,
+                                                         state.cycle_cnt, state.mutation,
+                                                         datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
+                    client.start_recorder(recorder_name, True)
                     ret = test_scenario_m.run_test(state)
                     if state.spawn_failed:
                         obj = state.spawn_failed_object
@@ -555,6 +559,17 @@ def main():
                         ret = -1
                     else:
                         print("[-] run_test error:")
+                        traceback.print_exc()
+                finally:
+                    try:
+                        client.stop_recorder()
+                        carla_dir = os.path.expanduser("~/.config/Epic/CarlaUE4/Saved")
+                        src_path = os.path.join(carla_dir, recorder_name)
+                        dst_path = os.path.join(conf.out_dir, recorder_name)
+                        print("[info] moving {} to {}".format(src_path, dst_path))
+                        shutil.move(src_path, dst_path)
+                    except Exception as e:
+                        print("[-] stop_recorder error:")
                         traceback.print_exc()
 
                 signal.alarm(0)

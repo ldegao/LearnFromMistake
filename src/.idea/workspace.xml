@@ -5,16 +5,57 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="44e8b0aa-b027-4ade-9ab0-b2e34993f513" name="更改" comment="">
-      <change afterPath="$PROJECT_DIR$/Repaly/Potential.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Repaly/replay.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MyDSL/APFPlanner.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MyDSL/Obstacle.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MyDSL/RecordDealer.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MyDSL/SpeedPlanner.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/MyDSL/trajectory.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Repaly/FollowWaypointsAgent.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Repaly/record.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Repaly/replay_by_carla.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Repaly/replay_under_control.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/out-artifact/meta" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-01-05/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-01-05/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-01-05/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-20-53/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-20-53/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-20-53/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-40-07/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-40-07/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-40-07/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-55-08/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-55-08/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-17-55-08/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-18-12-33/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-18-12-33/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-11-27-18-12-33/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-10-31-30/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-10-31-30/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-10-31-30/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-28-05/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-28-05/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-28-05/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-46-36/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-46-36/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-46-36/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-47-29/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-47-29/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-06-15-47-29/violation.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-11-10-52-29/identity.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-11-10-52-29/report.json" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/reports/2024-12-11-10-52-29/violation.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MyDSL/record_info.py" beforeDir="false" afterPath="$PROJECT_DIR$/MyDSL/record_info.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MyDSL/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/MyDSL/utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/executor.py" beforeDir="false" afterPath="$PROJECT_DIR$/executor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Repaly/replay.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/carla-compose-linshenghao.yml" beforeDir="false" afterPath="$PROJECT_DIR$/carla-compose-linshenghao.yml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/fuzz_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/fuzz_utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/fuzzer.py" beforeDir="false" afterPath="$PROJECT_DIR$/fuzzer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/init.sh" beforeDir="false" afterPath="$PROJECT_DIR$/init.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/seed/scene-created0.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_carla.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_carla.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_experiments.sh" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/seed/scene-created0.json" beforeDir="false" afterPath="$PROJECT_DIR$/seed/scene-created0.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/stop_carla.sh" beforeDir="false" afterPath="$PROJECT_DIR$/stop_carla.sh" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -32,9 +73,6 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
   </component>
-  <component name="PerforceDirect.Settings">
-    <option name="CHARSET" value="无" />
-  </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 8
 }</component>
@@ -45,35 +83,97 @@
   </component>
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
+    &quot;Python.APFPlanner.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Obstacle.executor&quot;: &quot;Run&quot;,
+    &quot;Python.RecordDealer.executor&quot;: &quot;Run&quot;,
+    &quot;Python.SpeedPlanner.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.record.executor&quot;: &quot;Run&quot;,
     &quot;Python.record_info.executor&quot;: &quot;Run&quot;,
+    &quot;Python.replay_by_carla.executor&quot;: &quot;Run&quot;,
+    &quot;Python.replay_under_control.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;git-widget-placeholder&quot;: &quot;lsh&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/home/linshenghao/LearnFromMistake&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/linshenghao/LearnFromMistake/src&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.github.copilot.settings.ApplicationConfigurable&quot;,
     &quot;two.files.diff.last.used.folder&quot;: &quot;/home/linshenghao/drivefuzz/baseline&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
-  <component name="RunAnythingCache">
-    <myKeys>
-      <visibility group="Grunt" flag="true" />
-      <visibility group="Gulp" flag="true" />
-      <visibility group="HTTP 请求" flag="true" />
-      <visibility group="Node.js" flag="true" />
-      <visibility group="npm" flag="true" />
-      <visibility group="yarn" flag="true" />
-      <visibility group="最近的项目" flag="true" />
-      <visibility group="运行 Python 文件" flag="true" />
-      <visibility group="运行 conda 命令" flag="true" />
-      <visibility group="运行 pip 命令" flag="true" />
-      <visibility group="运行配置" flag="true" />
-    </myKeys>
-  </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.replay_by_carla">
+    <configuration name="APFPlanner" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="src" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/MyDSL" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/MyDSL/APFPlanner.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="RecordDealer" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="src" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/MyDSL" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/MyDSL/RecordDealer.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="record" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="src" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Repaly" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Repaly/record.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="record_info" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="src" />
       <option name="ENV_FILES" value="" />
@@ -97,8 +197,35 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="replay_by_carla" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="src" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/Repaly" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/Repaly/replay_by_carla.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.replay_by_carla" />
+        <item itemvalue="Python.RecordDealer" />
+        <item itemvalue="Python.APFPlanner" />
+        <item itemvalue="Python.record" />
         <item itemvalue="Python.record_info" />
       </list>
     </recent_temporary>
@@ -124,7 +251,19 @@
       <workItem from="1733388354834" duration="1200000" />
       <workItem from="1733448979959" duration="38460000" />
       <workItem from="1733899962219" duration="34850000" />
-      <workItem from="1734057008906" duration="8384000" />
+      <workItem from="1734057008906" duration="9156000" />
+      <workItem from="1735212475369" duration="11472000" />
+      <workItem from="1736144067314" duration="36472000" />
+      <workItem from="1741055554556" duration="364000" />
+      <workItem from="1741055932268" duration="4569000" />
+      <workItem from="1741240100944" duration="40000" />
+      <workItem from="1741853754638" duration="58622000" />
+      <workItem from="1743127660041" duration="5312000" />
+      <workItem from="1743145339712" duration="29506000" />
+      <workItem from="1743492473485" duration="43930000" />
+      <workItem from="1744010397011" duration="3580000" />
+      <workItem from="1744013991477" duration="25158000" />
+      <workItem from="1744613447041" duration="12640000" />
     </task>
     <servers />
   </component>
@@ -143,6 +282,13 @@
     </option>
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/src$record_info.coverage" NAME="record_info 覆盖结果" MODIFIED="1733388885423" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/MyDSL" />
+    <SUITE FILE_PATH="coverage/src$Obstacle.coverage" NAME="Obstacle 覆盖结果" MODIFIED="1742438760973" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/MyDSL" />
+    <SUITE FILE_PATH="coverage/src$RecordDealer.coverage" NAME="RecordDealer 覆盖结果" MODIFIED="1744619903415" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/MyDSL" />
+    <SUITE FILE_PATH="coverage/src$replay_by_carla.coverage" NAME="replay_by_carla 覆盖结果" MODIFIED="1744619996710" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Repaly" />
+    <SUITE FILE_PATH="coverage/src$record_info.coverage" NAME="record_info 覆盖结果" MODIFIED="1744619755371" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/MyDSL" />
+    <SUITE FILE_PATH="coverage/src$SpeedPlanner.coverage" NAME="SpeedPlanner 覆盖结果" MODIFIED="1744619540925" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/MyDSL" />
+    <SUITE FILE_PATH="coverage/src$replay_under_control.coverage" NAME="replay_under_control 覆盖结果" MODIFIED="1743573943022" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Repaly" />
+    <SUITE FILE_PATH="coverage/src$record.coverage" NAME="record 覆盖结果" MODIFIED="1744619778922" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/Repaly" />
+    <SUITE FILE_PATH="coverage/src$APFPlanner.coverage" NAME="APFPlanner 覆盖结果" MODIFIED="1744619846513" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/MyDSL" />
   </component>
 </project>

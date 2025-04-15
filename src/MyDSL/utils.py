@@ -118,28 +118,32 @@ def initialize_vehicle_from_json(json_data, actor):
     # # Debug log for adjusted velocity
     # print(f"[DEBUG] Vehicle velocity adjusted: Speed {current_speed:.2f} | Direction {adjusted_velocity}")
 
-
 def find_timestamp(
         file_path: str,
         key_to_check: str = "TTCToNPCs",
-        exclude_values: list = ["very long", "long"],
-        find_first: bool = True
+        exclude_values=None,
+        find_first: bool = True,
+        find_first_first: bool = True
 ) -> float:
     """
-    Reads the JSON file and finds a frame where the specified key's value is not in the exclude_values.
-    Returns the "timestamp" of that frame.
-    Allows finding the first or last such frame based on `find_first`.
+    Reads the JSON file and finds the first or last frame in a continuous cluster
+    where the specified key's value is not in the exclude_values.
+    Allows finding the first or last such frame based on `find_first` and `find_first_first`.
 
     Args:
         file_path (str): The path to the JSON file.
         key_to_check (str): The key to check in the data (default: "TTCToNPCs").
         exclude_values (list): A list of values to exclude (default: ["very long", "long"]).
         find_first (bool): If True, finds the first matching frame. If False, finds the last matching frame.
+        find_first_first (bool): If True, returns the first frame of a continuous cluster of matching frames.
+                                 If False, returns the last frame of the cluster.
 
     Returns:
         float: The "timestamp" of the matching frame, or -1 if no match is found.
     """
     # Ensure the file exists before trying to open it
+    if exclude_values is None:
+        exclude_values = ["very long", "long"]
     if not os.path.exists(file_path):
         raise FileNotFoundError(f"File not found: {file_path}")
 
@@ -147,16 +151,43 @@ def find_timestamp(
         data = json.load(f)
 
     # Reverse the data order if looking for the last matching frame
-    data = data if find_first else reversed(data)
+    data = data if find_first else list(reversed(data))
+
+    # Initialize cluster state
+    in_cluster = False
+    cluster_start_index = None
 
     # Search for the matching frame
-    for datastamp in data:
-        timestamp = datastamp.get("timestamp")
+    for i, datastamp in enumerate(data):
+        # Ensure timestamp exists
+        timestamp = datastamp.get("timestamp", None)
+        if timestamp is None:
+            continue  # Skip frames without a timestamp
+
         ads_data = datastamp.get("scene", {}).get("ADS", {})
         key_value = ads_data.get(key_to_check, "")
 
+        # Check if the current frame is in the valid range (not in excluded values)
         if key_value not in exclude_values:
-            return timestamp
+            if not in_cluster:
+                # Start of a new matching cluster
+                in_cluster = True
+                cluster_start_index = i
+        else:
+            if in_cluster:
+                # We just encountered a break in the cluster
+                if find_first_first:  # Return the first frame of the cluster
+                    return data[cluster_start_index]["timestamp"]
+                else:  # Return the last frame of the cluster
+                    return data[i-1]["timestamp"]
+                in_cluster = False  # Reset for the next cluster
+
+    # Handle case where the cluster ends at the end of the list
+    if in_cluster:
+        if find_first_first:
+            return data[cluster_start_index]["timestamp"]
+        else:
+            return data[-1]["timestamp"]
 
     # If no matching frame is found, return -1
     return -1

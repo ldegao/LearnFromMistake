@@ -6,10 +6,11 @@
         <language minSize="47" name="Python" />
       </Languages>
     </inspection_tool>
+    <inspection_tool class="Eslint" enabled="true" level="WARNING" enabled_by_default="true" />
     <inspection_tool class="PyPackageRequirementsInspection" enabled="true" level="WARNING" enabled_by_default="true">
       <option name="ignoredPackages">
         <value>
-          <list size="255">
+          <list size="260">
             <item index="0" class="java.lang.String" itemvalue="scipy" />
             <item index="1" class="java.lang.String" itemvalue="pygame" />
             <item index="2" class="java.lang.String" itemvalue="networkx" />
@@ -265,6 +266,11 @@
             <item index="252" class="java.lang.String" itemvalue="unity-scope-calculator" />
             <item index="253" class="java.lang.String" itemvalue="google-auth" />
             <item index="254" class="java.lang.String" itemvalue="carla" />
+            <item index="255" class="java.lang.String" itemvalue="importlib_resources" />
+            <item index="256" class="java.lang.String" itemvalue="imageio" />
+            <item index="257" class="java.lang.String" itemvalue="imageio-ffmpeg" />
+            <item index="258" class="java.lang.String" itemvalue="kaleido" />
+            <item index="259" class="java.lang.String" itemvalue="plotly" />
           </list>
         </value>
       </option>

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import pdb
 import sys
 import time
 import random
@@ -201,6 +202,7 @@ def main():
     conf = config.Config()
     argparser = set_args()
     args = argparser.parse_args()
+    recorder_name = None
 
     init(conf, args)
 
@@ -215,7 +217,15 @@ def main():
 
     while True:
         cycle_cnt = 0
-
+        if conf.town is not None:
+            town_map = "Town0{}".format(conf.town)
+        else:
+            town_map = "Town0{}".format(random.randint(1, 2))
+        (client, tm) = executor.connect(conf)
+        client.set_timeout(20)
+        client.load_world(town_map)
+        world = client.get_world()
+        town = world.get_map()
         # STEP 0: Restart Carla simulator at the beginning of each cycle
         # (Carla hangs after a while due to a memory leak)
         # UPDATE: can't do this due to a bug in Carla. TimeoutException will
@@ -250,15 +260,6 @@ def main():
         except IndexError:
             print("[-] Seed queue is empty. Continue with random seed.")
 
-            if conf.town is not None:
-                town_map = "Town0{}".format(conf.town)
-            else:
-                town_map = "Town0{}".format(random.randint(1, 2))
-            (client, tm) = executor.connect(conf)
-            client.set_timeout(20)
-            client.load_world(town_map)
-            world = client.get_world()
-            town = world.get_map()
             spawn_points = town.get_spawn_points()
             sp = random.choice(spawn_points)
             sp_x = sp.location.x
@@ -539,7 +540,7 @@ def main():
 
                 signal.alarm(10 * 60)  # timeout after 10 mins
                 try:
-                    recorder_name = "{}_{}_{}_{}".format(state.campaign_cnt,
+                    recorder_name = "{}_{}_{}_{}.log".format(state.campaign_cnt,
                                                          state.cycle_cnt, state.mutation,
                                                          datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S'))
                     client.start_recorder(recorder_name, True)
@@ -563,7 +564,7 @@ def main():
                 finally:
                     try:
                         client.stop_recorder()
-                        carla_dir = os.path.expanduser("~/.config/Epic/CarlaUE4/Saved")
+                        carla_dir = os.path.expanduser("~/carla_data")
                         src_path = os.path.join(carla_dir, recorder_name)
                         dst_path = os.path.join(conf.out_dir, recorder_name)
                         print("[info] moving {} to {}".format(src_path, dst_path))

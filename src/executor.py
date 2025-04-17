@@ -1069,6 +1069,14 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 player_loc = player_transform.location
                 player_rot = player_transform.rotation
 
+                #lsh: set carla camera
+                spectator = world.get_spectator()
+                spectator_transform = carla.Transform(
+                    player_transform.transform(carla.Location(x=-5, z=2.5)),
+                    player_transform.rotation
+                )
+                spectator.set_transform(spectator_transform)
+
                 # Get speed
                 vel = player.get_velocity()
                 speed = 3.6 * math.sqrt(vel.x ** 2 + vel.y ** 2 + vel.z ** 2)
@@ -1102,11 +1110,11 @@ def simulate(conf, state, town, sp, wp, weather_dict, frictions_list, actors_lis
                 state.speed_lim.append(speed_limit)
                 state.angular_velocity.append(angular_velocity)
 
-                # print("(%.2f,%.2f)>(%.2f,%.2f)>(%.2f,%.2f) %.2f m left, %.2f/%d km/h   \r" % (
-                #     sp.location.x, sp.location.y, player_loc.x,
-                #     player_loc.y, goal_loc.x, goal_loc.y,
-                #     player_loc.distance(goal_loc),
-                #     speed, speed_limit), end="")
+                print("(%.2f,%.2f)>(%.2f,%.2f)>(%.2f,%.2f) %.2f m left, %.2f/%d km/h   \r" % (
+                    sp.location.x, sp.location.y, player_loc.x,
+                    player_loc.y, goal_loc.x, goal_loc.y,
+                    player_loc.distance(goal_loc),
+                    speed, speed_limit), end="")
 
                 if player.is_at_traffic_light():
                     traffic_light = player.get_traffic_light()
